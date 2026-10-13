@@ -1,8 +1,8 @@
 // Draws the plugin's logo, three arrow badges pointing right in the colours of
-// the three session states, and writes it in the two forms Stream Deck asks
-// for: the plugin icon as PNG (in colour, on a dark tile) and the list icon as
-// SVG (white, no tile). Uses only Node's standard library. Run with
-// `node scripts/make-icons.mjs`.
+// the three session states, and writes it in the forms Stream Deck asks for:
+// the plugin icon as PNG (in colour, on a dark tile), the list icons as SVG
+// (white, no tile), and the picture of the key that shows the logo. Uses only
+// Node's standard library. Run with `node scripts/make-icons.mjs`.
 //
 // The logo is the property of Thomas Albin and is not covered by the license
 // of the software. See "The logo" in LICENSE.md.
@@ -11,13 +11,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 
-const OUT = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "com.thomasalbin.code-command-center.sdPlugin",
-  "imgs",
-  "plugin",
-);
+const IMAGES = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "com.thomasalbin.code-command-center.sdPlugin", "imgs");
+const OUT = path.join(IMAGES, "plugin");
+/** The key that shows the logo, and its icon in the list of actions. */
+const KEY_OUT = path.join(IMAGES, "actions", "project-page");
+/** Width and height of a key's picture. */
+const KEY_SIZE = 144;
 
 /** Written into each file, so that the notice travels with the logo. */
 const NOTICE = "Code Command Center logo. Copyright (c) 2026 Thomas Albin. All rights reserved. See LICENSE.md.";
@@ -110,11 +109,26 @@ function unit(vector) {
 }
 
 /**
+ * @param {number} value
+ * @returns {string} with three decimals at most
+ */
+function number(value) {
+  return String(Math.round(value * 1000) / 1000);
+}
+
+/**
+ * @param {number[]} colour RGB
+ * @returns {string} such as `#1F6FEB`
+ */
+function hex(colour) {
+  return `#${colour.map((part) => part.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
+
+/**
  * @param {number} index
  * @returns {string} the badge as SVG path data
  */
 function outline(index) {
-  const number = (/** @type {number} */ value) => String(Math.round(value * 1000) / 1000);
   return (
     fillets(corners(index), radii())
       .map((arc, i) => {
@@ -251,15 +265,30 @@ function chunk(type, data) {
 }
 
 /**
- * @returns {string} the list icon: the logo in white, as Stream Deck asks of list icons
+ * @param {number} size 28 for the plugin's entry in the list of actions, 20 for one action's
+ * @returns {string} a list icon: the logo in white, as Stream Deck asks of list icons
  */
-function listIcon() {
+function listIcon(size) {
   const badges = [0, 1, 2].map(outline).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${GRID}" height="${GRID}" viewBox="0 0 ${GRID} ${GRID}"><!-- ${NOTICE} --><path d="${badges}" fill="#FFFFFF"/></svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${GRID} ${GRID}"><!-- ${NOTICE} --><path d="${badges}" fill="#FFFFFF"/></svg>\n`;
+}
+
+/**
+ * @returns {string} the picture of the key that shows the logo: the plugin icon, filling the key
+ */
+function keyImage() {
+  const scale = number((LOGO_WIDTH * KEY_SIZE) / LOGO_UNITS);
+  const badges = STATES.map((colour, index) => `<path d="${outline(index)}" fill="${hex(colour)}"/>`).join("");
+  const placed = `<g transform="translate(${KEY_SIZE / 2} ${KEY_SIZE / 2}) scale(${scale}) translate(${-GRID / 2} ${-GRID / 2})">${badges}</g>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${KEY_SIZE}" height="${KEY_SIZE}" viewBox="0 0 ${KEY_SIZE} ${KEY_SIZE}"><!-- ${NOTICE} --><rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="${hex(TILE)}"/>${placed}</svg>\n`;
 }
 
 mkdirSync(OUT, { recursive: true });
 writeFileSync(path.join(OUT, "icon.png"), png(256));
 writeFileSync(path.join(OUT, "icon@2x.png"), png(512));
-writeFileSync(path.join(OUT, "category.svg"), listIcon());
+writeFileSync(path.join(OUT, "category.svg"), listIcon(GRID));
 console.log(`Wrote icon.png, icon@2x.png and category.svg to ${OUT}`);
+mkdirSync(KEY_OUT, { recursive: true });
+writeFileSync(path.join(KEY_OUT, "icon.svg"), listIcon(20));
+writeFileSync(path.join(KEY_OUT, "key.svg"), keyImage());
+console.log(`Wrote icon.svg and key.svg to ${KEY_OUT}`);

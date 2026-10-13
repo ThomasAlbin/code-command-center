@@ -11,9 +11,11 @@
 // picture, to show it stepping through projects, and the settings panel's
 // question is asked. With --press, the first desktop key is pressed once,
 // which really brings the Claude app forward on that key's session. Without
-// --press no key is pressed short, so no window moves.
+// --press no session key is pressed short, so no window moves. The key with
+// the logo is pressed in every run: opening its page is the Stream Deck app's
+// part, and this stand-in only notes the address it was asked for.
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,7 +62,10 @@ const keys = [
     { context: `desktop-${column}`, action: `${PLUGIN}.session-desktop`, row: 1, column },
     { context: `vscode-${column}`, action: `${PLUGIN}.session-vscode`, row: 2, column },
   ]),
+  // The logo key is never drawn by the plugin: it shows its picture from the manifest.
+  { context: "logo", action: `${PLUGIN}.project-page`, row: 0, column: 4, picture: "imgs/actions/project-page/key.svg" },
 ].reverse();
+const drawn = keys.filter((key) => key.picture === undefined);
 
 /** @type {Map<string, string>} context → latest SVG */
 const shown = new Map();
@@ -124,6 +129,10 @@ server.on("connection", (socket) => {
       for (const key of keys) sendKeyEvent(socket, "willAppear", key);
       if (hold) scheduleHolds(socket);
       if (press) schedulePress(socket);
+      pressLogo(socket);
+    } else if (message.event === "openUrl") {
+      // The real Stream Deck app would open this in the browser. This stand-in only notes it.
+      console.log(`${stamp()} ${"logo".padEnd(10)} asks Stream Deck to open ${message.payload?.url}`);
     } else if (message.event === "setImage") {
       const svg = decodeURIComponent(String(message.payload.image).replace("data:image/svg+xml,", ""));
       shown.set(message.context, svg);
@@ -179,6 +188,20 @@ function schedulePress(socket) {
   }, 2000);
 }
 
+/**
+ * Presses the logo key once. Nothing opens: opening the page is the Stream
+ * Deck app's part, and this stand-in only notes that it was asked.
+ * @param {import("ws").WebSocket} socket
+ */
+function pressLogo(socket) {
+  const key = keys.find((candidate) => candidate.context === "logo");
+  if (key === undefined) return;
+  setTimeout(() => {
+    sendKeyEvent(socket, "keyDown", key);
+    setTimeout(() => sendKeyEvent(socket, "keyUp", key), 120);
+  }, 1000);
+}
+
 /** @param {string} svg */
 function describe(svg) {
   const colour = /<rect[^>]*fill="(#[0-9A-F]{6})"/.exec(svg)?.[1] ?? "?";
@@ -200,7 +223,7 @@ setTimeout(() => {
   // One picture of the deck: every key at its place on a 5 x 3 grid.
   const cells = keys
     .map((key) => {
-      const svg = shown.get(key.context) ?? "";
+      const svg = key.picture === undefined ? (shown.get(key.context) ?? "") : readFileSync(path.join(pluginDir, key.picture), "utf8");
       const x = GAP + key.column * (CELL + GAP);
       const y = GAP + key.row * (CELL + GAP);
       return svg.replace("<svg ", `<svg x="${x}" y="${y}" `);
@@ -211,9 +234,9 @@ setTimeout(() => {
     path.join(outDir, "deck.svg"),
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#000"/>${cells}</svg>`,
   );
-  console.log(`\n${updates} image updates for ${shown.size} of ${keys.length} keys. Deck picture: ${path.join(outDir, "deck.svg")}`);
+  console.log(`\n${updates} image updates for ${shown.size} of ${drawn.length} keys that the plugin draws. Deck picture: ${path.join(outDir, "deck.svg")}`);
   if (output.trim() !== "") console.log(`plugin output:\n${output}`);
   child.kill("SIGTERM");
   server.close();
-  process.exit(shown.size === keys.length ? 0 : 1);
+  process.exit(shown.size === drawn.length ? 0 : 1);
 }, seconds * 1000);

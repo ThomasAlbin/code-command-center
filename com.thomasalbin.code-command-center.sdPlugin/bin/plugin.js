@@ -2,6 +2,7 @@
 import streamDeck from "@elgato/streamdeck";
 import os from "node:os";
 import path from "node:path";
+import { ProjectPageAction } from "./actions/project-page.js";
 import { QuotaAction } from "./actions/quota.js";
 import { SessionAction } from "./actions/session.js";
 import { ClaudeCli } from "./adapters/claude-cli.js";
@@ -90,6 +91,8 @@ streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-desktop`,
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-vscode`, "vscode", board));
 streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage));
 streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage));
+// The logo key has the Stream Deck app open the project's page; the plugin itself opens nothing.
+streamDeck.actions.registerAction(new ProjectPageAction(`${PLUGIN}.project-page`, (url) => streamDeck.system.openUrl(url)));
 
 // Sessions come and go with the apps and nothing is listed during sleep.
 streamDeck.system.onApplicationDidLaunch(() => monitor.requestRefresh());

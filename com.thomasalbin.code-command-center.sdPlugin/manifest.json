@@ -93,6 +93,22 @@
           "Image": "imgs/actions/quota/key"
         }
       ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.project-page",
+      "Name": "Project Page",
+      "Tooltip": "Shows the Code Command Center logo. Press to open the project's page on GitHub in your browser.",
+      "Icon": "imgs/actions/project-page/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/project-page/key"
+        }
+      ]
     }
   ]
 }

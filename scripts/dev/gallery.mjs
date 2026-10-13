@@ -2,7 +2,7 @@
 // Stream Deck. A development aid.
 //
 //   node scripts/dev/gallery.mjs [output-file]
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -15,6 +15,11 @@ import {
 const CELL = 144;
 const GAP = 12;
 const out = process.argv[2] ?? path.join(os.tmpdir(), "code-command-center-gallery.svg");
+/** The key that shows the logo is a picture in the plugin's folder, not something the plugin draws. */
+const logoKey = readFileSync(
+  new URL("../../com.thomasalbin.code-command-center.sdPlugin/imgs/actions/project-page/key.svg", import.meta.url),
+  "utf8",
+).trim();
 
 const rows = [
   [
@@ -43,7 +48,7 @@ const rows = [
     renderSessionKey({ app: "desktop", state: "waiting", label: "examples", pinned: true }),
     renderSessionKey({ app: "vscode", state: "done", label: "misty-streams" }),
     renderSessionKey({ app: "vscode", state: "idle", label: "weather-api", pinned: true }),
-    renderSessionKey({ app: "desktop", state: "idle", label: "backend" }),
+    logoKey,
   ],
   [
     renderSessionKey({ app: "vscode", state: "working", label: "big-data-analyzer", pinned: true }),

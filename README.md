@@ -1,3 +1,5 @@
+<img src="com.thomasalbin.code-command-center.sdPlugin/imgs/plugin/icon@2x.png" width="120" height="120" alt="The Code Command Center logo: three arrow badges that point to the right, in blue, orange and green">
+
 # Code Command Center
 
 Stream Deck keys for AI coding sessions on the Mac. Today it supports Claude Code: the keys show what each of your Claude Code sessions is doing, in the Claude desktop app and in VS Code, bring the session that needs you to the front, and show how much of your plan limits is used.
@@ -8,7 +10,7 @@ An independent project, not affiliated with Anthropic, Elgato or Microsoft. Free
 
 ## What the keys show
 
-There are four kinds of key. Put as many of each on your deck as you like.
+There are five kinds of key. Put as many of each on your deck as you like.
 
 | Key | Shows | Press |
 |---|---|---|
@@ -16,6 +18,7 @@ There are four kinds of key. Put as many of each on your deck as you like.
 | **Session in VS Code** | One Claude Code session in VS Code, also inside a Dev Container | Brings that project's VS Code window to the front |
 | **Quota 5h** | How much of the 5-hour limit of your plan is used | Nothing, it is a display |
 | **Quota 7d** | The same for the weekly limit | Nothing |
+| **Project Page** | The logo of Code Command Center | Opens this project's page on GitHub in your browser |
 
 ### Session keys
 
@@ -78,7 +81,7 @@ sh scripts/install.sh
 
 The script fetches the plugin's one dependency, Elgato's Stream Deck SDK, and copies the plugin into Stream Deck's plugin folder. The folder you downloaded is not needed afterwards, except for the next step.
 
-Then quit the Stream Deck app and open it again. The four keys are in the category **Code Command Center**; drag them onto your deck.
+Then quit the Stream Deck app and open it again. The five keys are in the category **Code Command Center**; drag them onto your deck.
 
 A layout that works well on a 15-key deck: the two quota keys in the first row, three **Desktop Session** keys in the second and three **Session in VS Code** keys in the third.
 
@@ -180,6 +183,7 @@ What follows is true of the plugin's own code. The plugin also starts other prog
 - **Network:** the plugin's code opens no internet connection and no listening port. Its process has one socket, the SDK's local link to the Stream Deck app, which every plugin has. The settings panel uses that same local link and loads nothing from the network.
 - **Credentials:** the plugin's code does not touch the Keychain and opens no credential or key file. It never sees a sign-in token: from Claude Code it receives the list of sessions and nothing else.
 - **Sessions:** nothing is sent into a session. The plugin cannot submit prompts, approve anything or spend usage. A press can start the Claude app or VS Code if it is not running, and make the Claude app show a session it runs. A press on a key that is reserved for a Dev Container project makes VS Code open that project, which starts the container if it was stopped.
+- **Browser:** a press on the key with the logo asks the Stream Deck app to open one address in your browser, this project's page on GitHub. The address is fixed in `bin/core/project.js`, and it is the only one the plugin ever hands on.
 - **Programs:** the plugin starts exactly five, each with fixed arguments, all in `bin/adapters/exec.js`:
 
   | Program | Arguments | Purpose |
