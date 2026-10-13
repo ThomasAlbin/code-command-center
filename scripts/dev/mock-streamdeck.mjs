@@ -210,7 +210,7 @@ function describe(svg) {
   const tick = /<path d="M(\d+) 91V111"/.exec(svg)?.[1];
   const pace = tick === undefined ? "" : ` [even use at ${Math.round((Number(tick) - 12) / 1.2)}%]`;
   const framed = svg.includes('<rect x="3" y="3"') ? " [framed]" : "";
-  const logo = svg.includes('fill-rule="evenodd"') ? " [logo read from VS Code]" : /fill-rule="nonzero" d="M 12 1 C|fill-rule="nonzero" d="M 8 5\.5/.test(svg) ? " [own mark]" : svg.includes('fill-rule="nonzero"') ? " [logo read from the Claude Code extension]" : "";
+  const logo = svg.includes('fill-rule="evenodd"') ? " [logo read from VS Code]" : /fill-rule="nonzero" d="M 5 3 H|fill-rule="nonzero" d="M 8 5\.5/.test(svg) ? " [own mark]" : svg.includes('fill-rule="nonzero"') ? " [logo read from the Claude Code extension]" : "";
   return `${(STATES[colour] ?? colour).padEnd(8)} ${JSON.stringify(texts.join(" "))}${pinned}${pace}${framed}${logo}`;
 }
 

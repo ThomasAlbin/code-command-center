@@ -237,7 +237,7 @@ node scripts/dev/watch-listing.mjs
 
 The plugin's own logo, three arrow badges in a row that point to the right, is the property of Thomas Albin. The license of the software does not cover it, and it may not be used for anything else, changed, sold or resold: see [The logo](LICENSE.md#the-logo) in LICENSE.md.
 
-This repository contains no logo of Anthropic or Microsoft. On the keys, the plugin draws two plain marks of its own, a sparkle for the Claude app and a pair of angle brackets for VS Code, which is what the picture above shows.
+This repository contains no logo of Anthropic or Microsoft. On the keys, the plugin draws two plain marks of its own, a speech bubble for the Claude app and a pair of angle brackets for VS Code, which is what the picture above shows.
 
 On your Mac the keys can look different: where the Claude Code extension for VS Code is installed, the plugin reads Claude's logo from that extension's files, and where VS Code is installed it reads VS Code's logo from the app. It shows them on your own Stream Deck only. See [NOTICE.md](NOTICE.md).
 

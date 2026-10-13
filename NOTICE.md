@@ -14,7 +14,7 @@ The Code Command Center logo, three arrow badges in a row that point to the righ
 
 ## Logos of others
 
-This repository contains no logo of any of these companies. On the keys, the plugin draws two plain marks of its own: a sparkle for the Claude app and a pair of angle brackets for VS Code.
+This repository contains no logo of any of these companies. On the keys, the plugin draws two plain marks of its own: a speech bubble for the Claude app and a pair of angle brackets for VS Code.
 
 Where the Claude Code extension for VS Code, or VS Code itself, is installed on a Mac, the plugin reads that app's logo from the app's own files on that Mac and shows it on the keys of the Stream Deck connected to it. The logos stay with their owners. They are not part of this project and are not licensed by it.
 
