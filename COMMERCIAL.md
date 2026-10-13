@@ -18,6 +18,10 @@ Open an issue in this project's GitHub repository with the title "Commercial lic
 
 Written consent for a particular use, given by the copyright holder, counts as a license for that use.
 
+## Sponsoring
+
+Sponsoring the project, for example through GitHub Sponsors, is voluntary support for its development. It is not a commercial license and does not count as consent to commercial use.
+
 ## The logo
 
 A commercial license covers the software. It gives no rights to the Code Command Center logo beyond showing it as the icon of the plugin, unless the license says otherwise in writing. The logo is the property of Thomas Albin and may not be used elsewhere, changed, sold or resold: see [The logo](LICENSE.md#the-logo) in LICENSE.md.
