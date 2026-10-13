@@ -1,0 +1,6 @@
+{
+  "name": "deck-bridge",
+  "version": "1.0.0",
+  "description": "Writes plan usage (5-hour and 7-day percent used and reset times) to a local file for the quota keys of the Code Command Center Stream Deck plugin.",
+  "license": "PolyForm-Noncommercial-1.0.0"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "code-command-center",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stream Deck keys for Claude Code: session status for the Claude desktop app and VS Code, and plan usage",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "install-plugin": "sh scripts/install.sh",
+    "install-mod": "sh scripts/install-mod.sh",
+    "pack": "sh scripts/pack.sh"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "6.0.3"
+  }
+}

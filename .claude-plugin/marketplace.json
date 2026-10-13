@@ -1,0 +1,13 @@
+{
+  "name": "code-command-center",
+  "owner": {
+    "name": "Thomas Albin"
+  },
+  "plugins": [
+    {
+      "name": "deck-bridge",
+      "source": "./mod/deck-bridge",
+      "description": "Writes plan usage to a local file for the quota keys of the Code Command Center Stream Deck plugin."
+    }
+  ]
+}

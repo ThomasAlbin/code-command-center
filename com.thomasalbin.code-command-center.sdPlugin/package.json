@@ -1,0 +1,11 @@
+{
+  "name": "code-command-center-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runtime dependencies of the Code Command Center Stream Deck plugin",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@elgato/streamdeck": "3.0.2"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "UUID": "com.thomasalbin.code-command-center",
+  "Name": "Code Command Center",
+  "Version": "1.0.0.0",
+  "Author": "Thomas Albin",
+  "Description": "Status lights for Claude Code sessions in the Claude desktop app and VS Code, and plan usage.",
+  "Category": "Code Command Center",
+  "CategoryIcon": "imgs/plugin/category",
+  "Icon": "imgs/plugin/icon",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 3,
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    }
+  ],
+  "Nodejs": {
+    "Version": "24"
+  },
+  "ApplicationsToMonitor": {
+    "mac": [
+      "com.anthropic.claudefordesktop",
+      "com.microsoft.VSCode"
+    ]
+  },
+  "Actions": [
+    {
+      "UUID": "com.thomasalbin.code-command-center.session-desktop",
+      "Name": "Desktop Session",
+      "Tooltip": "Shows a Claude Code session of the Claude desktop app. Press to bring Claude to the front, hold to switch project.",
+      "Icon": "imgs/actions/session-desktop/icon",
+      "PropertyInspectorPath": "ui/session.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/session-desktop/key"
+        }
+      ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.session-vscode",
+      "Name": "Session in VS Code",
+      "Tooltip": "Shows a Claude Code session running in VS Code, also inside a Dev Container. Press to bring its window to the front, hold to switch project.",
+      "Icon": "imgs/actions/session-vscode/icon",
+      "PropertyInspectorPath": "ui/session.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/session-vscode/key"
+        }
+      ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.quota-5h",
+      "Name": "Quota 5h",
+      "Tooltip": "Shows how much of the 5-hour plan limit is used and when it resets. Display only.",
+      "Icon": "imgs/actions/quota/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/quota/key"
+        }
+      ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.quota-7d",
+      "Name": "Quota 7d",
+      "Tooltip": "Shows how much of the 7-day plan limit is used and when it resets. Display only.",
+      "Icon": "imgs/actions/quota/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/quota/key"
+        }
+      ]
+    }
+  ]
+}

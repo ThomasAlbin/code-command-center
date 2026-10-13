@@ -1,0 +1,4 @@
+node_modules/
+*.sdPlugin/logs/
+dist/
+.DS_Store
