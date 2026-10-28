@@ -162,9 +162,9 @@ confirm
 
 node "$ROOT/scripts/lib/settings.mjs" add "$STAGE/settings.json" "$TARGET_IN" >/dev/null
 
-mkdir -p "$STAGE/marketplace/.claude-plugin"
+mkdir -p "$STAGE/marketplace/.claude-plugin" "$STAGE/marketplace/mod"
 cp "$ROOT/.claude-plugin/marketplace.json" "$STAGE/marketplace/.claude-plugin/"
-cp -R "$ROOT/mod" "$STAGE/marketplace/mod"
+cp -R "$ROOT/mod/deck-bridge" "$STAGE/marketplace/mod/"
 cp "$ROOT/LICENSE.md" "$STAGE/marketplace/"
 
 # An earlier copy is replaced. New folders are for their owner only.

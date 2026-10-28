@@ -57,6 +57,13 @@ const rows = [
     renderEmptyKey("VS Code", "vscode"),
     renderSessionKey({ app: "desktop", state: "unknown", label: "" }),
   ],
+  [
+    renderSessionKey({ app: "antigravity", state: "working", label: "orbit", time: "4m" }),
+    renderSessionKey({ app: "antigravity", state: "waiting", label: "comet-tail", time: "2m", reason: "permission" }),
+    renderSessionKey({ app: "antigravity", state: "done", label: "orbit", pinned: true }),
+    renderPinnedEmptyKey("launchpad", "antigravity"),
+    renderEmptyKey("Antigravity", "antigravity"),
+  ],
 ];
 
 const cells = rows

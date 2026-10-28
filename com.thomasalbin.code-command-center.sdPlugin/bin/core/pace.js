@@ -39,7 +39,8 @@ const RULES = new Map([
  * @returns {Pace | undefined} nothing while the limit's window is not known
  */
 export function paceOf(readings, kind, now) {
-  const rule = RULES.get(kind);
+  // The Antigravity CLI's limits name their group after the window, such as `five_hour:gemini`.
+  const rule = RULES.get(kind.split(":")[0]);
   if (rule === undefined) return undefined;
 
   /** @type {Array<{ at: number, percent: number, resetsAt: number | undefined }>} */

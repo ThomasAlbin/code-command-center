@@ -76,6 +76,11 @@ export class UsageMonitor {
     return paceOf([...this.#past.values()], kind, this.#deps.now());
   }
 
+  /** @returns {Set<string>} the kinds of limit the readings report */
+  kinds() {
+    return new Set([...this.#readings.values(), ...this.#elsewhere.values()].flatMap((reading) => reading.limits.map((limit) => limit.kind)));
+  }
+
   /** A quota key became visible. The first one starts the watching. */
   acquire() {
     this.#users += 1;

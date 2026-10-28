@@ -2,7 +2,8 @@
 import { execFile } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
-import { CLAUDE_DESKTOP, isSessionId } from "../core/focus.js";
+import { TERMINALS } from "../core/antigravity.js";
+import { CLAUDE_DESKTOP, isSessionId, VS_CODE } from "../core/focus.js";
 import { isClaudeInContainer, isContainerId, isContainerUser, isUsageFileInContainer } from "../core/parse-docker.js";
 import { isDevContainerAddress } from "../core/vscode-windows.js";
 
@@ -13,6 +14,7 @@ import { isDevContainerAddress } from "../core/vscode-windows.js";
 //   ps            -axo pid=,ppid=,comm=                see which app owns a session
 //   open          -b <Claude or VS Code> [folder]      bring an app to the front
 //                 -b <Claude> claude://resume?session=<id>   have Claude show a session it runs
+//                 -b <terminal app>                    bring forward the terminal an Antigravity CLI session runs in
 //   docker        ps | top | exec ... agents --json    list sessions in Dev Containers
 //                 exec ... /bin/cat <reading>          read the usage a session there reported
 //                 (both as the user the Claude Code there belongs to, where its home folder shows who that is)
@@ -25,7 +27,8 @@ import { isDevContainerAddress } from "../core/vscode-windows.js";
 
 const PS = "/bin/ps";
 const OPEN = "/usr/bin/open";
-const APPS = new Set(["com.anthropic.claudefordesktop", "com.microsoft.VSCode"]);
+/** The apps this plugin brings forward: Claude, VS Code, and the terminals on a fixed list. */
+const APPS = new Set([CLAUDE_DESKTOP, VS_CODE, ...TERMINALS.map((terminal) => terminal.bundleId)]);
 const DOCKER_LOCATIONS = [
   "/usr/local/bin/docker",
   "/opt/homebrew/bin/docker",
@@ -96,7 +99,7 @@ export function processTable() {
 }
 
 /**
- * Brings Claude or VS Code to the front, optionally on a folder.
+ * Brings Claude, VS Code or a terminal app to the front, optionally on a folder.
  *
  * @param {string} bundleId
  * @param {string} [folder]

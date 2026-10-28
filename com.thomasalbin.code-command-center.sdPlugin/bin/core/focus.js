@@ -39,6 +39,11 @@ export function focusTarget(client, session, pin) {
     const live = session?.pid !== undefined && session.kind === "interactive";
     return live && isSessionId(session?.sessionId) ? { bundleId: CLAUDE_DESKTOP, session: session.sessionId } : { bundleId: CLAUDE_DESKTOP };
   }
+  if (client === "antigravity") {
+    // The CLI runs in a terminal: the app that holds it comes forward. Without
+    // a session there is no terminal to bring, and a CLI under tmux or SSH has no app.
+    return session?.host === undefined ? undefined : { bundleId: session.host };
+  }
   if (client !== "vscode") return undefined;
 
   if (session?.container !== undefined) {

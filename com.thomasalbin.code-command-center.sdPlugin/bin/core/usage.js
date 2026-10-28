@@ -4,7 +4,7 @@ import { formatClock, formatCountdown, formatDayClock } from "./format.js";
 /**
  * One plan limit as Claude Code reports it.
  * @typedef {object} Limit
- * @property {string} kind `five_hour` or `seven_day`
+ * @property {string} kind `five_hour` or `seven_day`; for the Antigravity CLI the window and its group of models, such as `five_hour:gemini`
  * @property {number} percentUsed 0 to 100
  * @property {number} [resetsAt] Unix milliseconds
  */

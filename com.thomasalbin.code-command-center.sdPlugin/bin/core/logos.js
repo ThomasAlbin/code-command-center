@@ -1,6 +1,6 @@
 // @ts-check
 
-/** @typedef {"desktop" | "vscode"} App */
+/** @typedef {"desktop" | "vscode" | "antigravity"} App */
 
 /**
  * @typedef {object} Logo
@@ -11,8 +11,9 @@
  */
 
 /**
- * The marks this plugin draws by itself: a speech bubble for the Claude app
- * and a pair of angle brackets for VS Code. They are plain shapes of its own,
+ * The marks this plugin draws by itself: a speech bubble for the Claude app,
+ * a pair of angle brackets for VS Code and a terminal prompt for the
+ * Antigravity CLI. They are plain shapes of its own,
  * and deliberately no star or burst, which several makers of AI tools use as
  * their logo. The apps' logos belong to their owners and are not part of this
  * project; where an app is installed, its logo is read from the app instead
@@ -29,6 +30,12 @@ export const LOGOS = {
   },
   vscode: {
     d: "M 8 5.5 L 1.5 12 L 8 18.5 L 9.8 16.7 L 5.1 12 L 9.8 7.3 Z M 16 5.5 L 22.5 12 L 16 18.5 L 14.2 16.7 L 18.9 12 L 14.2 7.3 Z",
+    width: 24,
+    height: 24,
+    rule: "nonzero",
+  },
+  antigravity: {
+    d: "M 3.2 6.1 L 5 4.3 L 12.7 12 L 5 19.7 L 3.2 17.9 L 9.1 12 Z M 13.5 17.3 H 21 V 19.8 H 13.5 Z",
     width: 24,
     height: 24,
     rule: "nonzero",

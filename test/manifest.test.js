@@ -15,7 +15,7 @@ const entry = readFileSync(new URL("bin/plugin.js", PLUGIN), "utf8");
 const pictured = (name) => [".svg", ".png"].some((ending) => existsSync(new URL(`${name}${ending}`, PLUGIN)));
 
 test("every key in the manifest has its pictures and is handled by the plugin", () => {
-  assert.equal(manifest.Actions.length, 5);
+  assert.equal(manifest.Actions.length, 8);
   for (const action of manifest.Actions) {
     assert.ok(action.UUID.startsWith(`${manifest.UUID}.`), action.UUID);
     assert.ok(pictured(action.Icon), `${action.Name}: icon in the list of actions`);
@@ -28,7 +28,7 @@ test("every key in the manifest has its pictures and is handled by the plugin", 
 
 test("the names of the keys are written with capitals and carry no name of Anthropic's", () => {
   const names = manifest.Actions.map((/** @type {{ Name: string }} */ action) => action.Name);
-  assert.deepEqual(names, ["Desktop Session", "Session in VS Code", "Quota 5h", "Quota 7d", "Project Page"]);
+  assert.deepEqual(names, ["Desktop Session", "Session in VS Code", "Session in Antigravity CLI", "Quota 5h", "Quota 7d", "Antigravity Quota 5h", "Antigravity Quota 7d", "Project Page"]);
   for (const name of names) assert.doesNotMatch(name, /claude|anthropic/i);
 });
 

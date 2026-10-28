@@ -12,7 +12,7 @@ import { displayState, elapsed, overdue, priority } from "../core/state.js";
 /** @typedef {import("../core/state.js").DisplayState} DisplayState */
 /** @typedef {import("./session-monitor.js").TrackedSession} TrackedSession */
 
-/** @typedef {"desktop" | "vscode"} Group */
+/** @typedef {"desktop" | "vscode" | "antigravity"} Group */
 
 /**
  * The part of a Stream Deck key the board uses.
@@ -38,7 +38,7 @@ import { displayState, elapsed, overdue, priority } from "../core/state.js";
  * @property {TrackedSession[]} sessions
  * @property {boolean} healthy
  * @property {(listener: () => void) => void} onChange
- * @property {(visible: { desktop: number, vscode: number }) => void} watch
+ * @property {(visible: Record<Group, number>) => void} watch
  * @property {(key: string) => void} acknowledge
  */
 
@@ -53,8 +53,10 @@ import { displayState, elapsed, overdue, priority } from "../core/state.js";
 /** @typedef {{ session: TrackedSession, state: DisplayState }} Shown */
 
 /** @type {Group[]} */
-const GROUPS = ["desktop", "vscode"];
-const CAPTIONS = { desktop: "Claude", vscode: "VS Code" };
+const GROUPS = ["desktop", "vscode", "antigravity"];
+const CAPTIONS = { desktop: "Claude", vscode: "VS Code", antigravity: "Antigravity" };
+/** Groups whose sessions on this Mac come from Claude Code's listing, and so are only known while that works. */
+const LISTED_BY_CLAUDE = new Set(["desktop", "vscode"]);
 /** Keys are also redrawn on a timer, so "done" can fade without any event. */
 const REDRAW_MS = 60_000;
 /** More often while a key shows how long its session has been at it, so the minutes do not lag. */
@@ -73,7 +75,7 @@ export class Board {
   /** @type {Map<string, Placed>} */
   #keys = new Map();
   /** @type {Record<Group, Map<string, string>>} slot → session key, for automatic keys */
-  #assignments = { desktop: new Map(), vscode: new Map() };
+  #assignments = { desktop: new Map(), vscode: new Map(), antigravity: new Map() };
   /** @type {NodeJS.Timeout | undefined} */
   #redraw;
   /** @type {NodeJS.Timeout | undefined} */
@@ -176,6 +178,8 @@ export class Board {
     for (const group of GROUPS) {
       const placed = [...this.#keys.values()].filter((entry) => entry.group === group).sort(readingOrder);
       if (placed.length === 0) continue;
+      // The Antigravity CLI's sessions are read from the bridge's files, whether or not Claude Code answers.
+      const listed = healthy || !LISTED_BY_CLAUDE.has(group);
 
       /** @type {Shown[]} */
       const mine = sessions
@@ -214,14 +218,14 @@ export class Board {
         const assigned = entry.session === undefined ? undefined : byKey.get(entry.session);
         // While sessions on this Mac cannot be listed, the ones last seen here
         // may be long gone. Those in Dev Containers are listed on their own.
-        const current = assigned !== undefined && (healthy || assigned.session.info.container !== undefined);
+        const current = assigned !== undefined && (listed || assigned.session.info.container !== undefined);
         const shown = current ? assigned : undefined;
         if (shown !== undefined) {
           const { memo } = shown.session;
           if (overdue(memo, now)) redrawIn = PULSE_MS;
           else if (elapsed(memo, now) !== undefined) redrawIn = Math.min(redrawIn, CLOCK_MS);
         }
-        this.#show(entry, image(entry, healthy, shown, entry === last ? overflow : 0, now, this.#deps.logos));
+        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#deps.logos));
       }
     }
 
@@ -244,7 +248,7 @@ export class Board {
   }
 
   #watch() {
-    const visible = { desktop: 0, vscode: 0 };
+    const visible = { desktop: 0, vscode: 0, antigravity: 0 };
     for (const placed of this.#keys.values()) visible[placed.group] += 1;
     this.#deps.monitor.watch(visible);
   }
@@ -264,7 +268,7 @@ export class Board {
 
 /**
  * @param {Placed} placed
- * @param {boolean} healthy whether sessions on this Mac can be listed; without that, a key cannot say that it has none
+ * @param {boolean} healthy whether this key's sessions can be listed; without that, a key cannot say that it has none
  * @param {Shown | undefined} shown the key's session, if what is known of it is current
  * @param {number} overflow
  * @param {number} now

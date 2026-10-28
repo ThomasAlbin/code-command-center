@@ -6,7 +6,7 @@
  * @property {string} comm executable path
  */
 
-/** @typedef {"desktop" | "vscode" | "other"} Client */
+/** @typedef {"desktop" | "vscode" | "antigravity" | "other"} Client */
 
 /** How far up the parent chain to look for the app that owns a session. */
 const MAX_DEPTH = 12;
