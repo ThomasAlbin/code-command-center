@@ -5,8 +5,9 @@ Bug reports, ideas and pull requests are welcome.
 ## Before you open a pull request
 
 - `npm test` and `npm run typecheck` pass.
-- The safety model in the [README](README.md#safety) still holds. If your change starts another program, reads another file or adds to what the mod does, say so in the pull request; the README has to change with it.
+- The safety model in the [README](README.md#safety) still holds. If your change starts another program, reads another file or adds to what the mod or the bridge does, say so in the pull request; the README has to change with it.
 - A change to the mod in `mod/deck-bridge/` needs particular care, because the mod runs inside Claude Code. The test `test/mod.test.js` reads the mod as text and fails when a hook or a call is added, on purpose. It catches a change made in the open, not one written to get past it, so a change to the mod is also read line by line.
+- The same goes for the bridge in `mod/antigravity-bridge/`, which runs inside the Antigravity CLI. The test `test/antigravity.test.js` reads it as text and fails when it starts another program or writes outside its folder.
 
 ## The license of what you contribute
 
