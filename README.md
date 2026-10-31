@@ -72,7 +72,7 @@ Tick **Gen-Z mode** under **Effects** in the settings of any session key in the 
 
 | Key | In Gen-Z mode |
 |---|---|
-| Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and every six seconds a glint sweeps over it |
+| Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and every twelve seconds a glint sweeps over it |
 | Waiting (orange) | Shimmers the same way, in warm colours |
 | Finished (bright green) | Bursts as it turns green: for 1.6 seconds the logo pops, a ring spreads from it and confetti flies out. Then it shimmers in light colours, gold, lime and aqua |
 | Idle (dim green) | Takes a finished key's bright green and shimmer, with dark green bands where that has lime, so the two stay apart |

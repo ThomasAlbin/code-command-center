@@ -6,7 +6,7 @@
 /** @typedef {import("./render.js").DeckPlace} DeckPlace */
 
 /** One cycle of the shimmer: the glint sweeps across the deck, then rests. */
-export const SHIMMER_MS = 6_000;
+export const SHIMMER_MS = 12_000;
 /** A deck whose size Stream Deck does not say is taken to be an MK.2. */
 const USUAL_DECK = { columns: 5, rows: 3 };
 
