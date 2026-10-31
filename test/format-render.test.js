@@ -119,9 +119,13 @@ test("a waiting key shimmers in warm colours, so its orange does not turn grey",
   assert.ok(colours("working").includes("#00E5FF"));
   assert.ok(!colours("waiting").includes("#00E5FF"));
   assert.ok(colours("waiting").includes("#FFE45C"));
-  const idle = [...renderSessionKey({ app: "desktop", state: "idle", label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="([\d.]+)"/g)];
-  assert.ok(idle.some(([, colour]) => colour === "#C6FF5C"), "an idle key shimmers in green");
-  assert.ok(idle.every(([, , opacity]) => Number(opacity) <= 0.25), "and faintly, so its pale label stays readable");
+  const done = [...renderSessionKey({ app: "desktop", state: "done", label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.45"/g)].map((match) => match[1]);
+  assert.ok(done.includes("#C6FF5C") && !done.includes("#B44DFF"), "a finished key in light colours, no violet");
+  const idle = renderSessionKey({ app: "desktop", state: "idle", label: "alpha", holo: 0.2 });
+  const bands = [...idle.matchAll(/<stop offset="[\d.]+" stop-color="(#[0-9A-F]{6})" stop-opacity="([\d.]+)"\/>/g)].slice(0, 21);
+  assert.ok(bands.some(([, colour]) => colour === "#00FFA3"), "an idle key shimmers in green");
+  assert.ok(bands.some(([, , opacity]) => opacity === "0"), "in ribbons with dark gaps, so it does not look grey");
+  assert.ok(idle.includes('stop-color="#B0FFD9" stop-opacity="0.35"'), "and a mint glint, as a white one turns grey");
   const pulsing = renderSessionKey({ app: "desktop", state: "waiting", label: "alpha", urgent: true, lit: true, holo: 0.2 });
   assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");
 });

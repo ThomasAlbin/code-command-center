@@ -483,7 +483,7 @@ test("a pulsing key redraws by itself", async () => {
 /** @param {string} svg where the shimmer's bands start; nothing without a shimmer */
 const bands = (svg) => /<linearGradient id="sheen"[^>]* x1="([^"]+)"/.exec(svg)?.[1];
 
-test("in Gen-Z mode, keys of working, waiting and idle sessions shimmer, each a little after the one before", () => {
+test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimmer, each a little after the one before", () => {
   const clock = { now: NOW };
   const { board } = setUp(
     [
@@ -492,10 +492,11 @@ test("in Gen-Z mode, keys of working, waiting and idle sessions shimmer, each a 
       tracked("gamma", "desktop", "idle", NOW - 10 * MINUTE, {}, { doneSince: NOW - 10 * MINUTE }),
       tracked("delta", "desktop", "waiting"),
       tracked("epsilon", "desktop", "idle", NOW - 60 * MINUTE),
+      tracked("zeta", "desktop", "error", NOW - 60 * MINUTE),
     ],
     clock,
   );
-  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2), fakeKey("d", 0, 3), fakeKey("e", 0, 4)];
+  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2), fakeKey("d", 0, 3), fakeKey("e", 0, 4), fakeKey("f", 1, 0)];
   for (const key of keys) board.keyAppeared("desktop", key);
   board.render();
   assert.ok(keys.every((key) => bands(key.shown) === undefined), "off unless switched on");
@@ -507,8 +508,9 @@ test("in Gen-Z mode, keys of working, waiting and idle sessions shimmer, each a 
   assert.ok(bands(first.shown) !== undefined && bands(second.shown) !== undefined);
   assert.notEqual(bands(first.shown), bands(second.shown), "the shimmer travels across the deck");
   assert.ok(bands(keyOf("delta").shown) !== undefined, "a waiting key shimmers as well");
+  assert.ok(bands(keyOf("gamma").shown) !== undefined, "a finished one");
   assert.ok(bands(keyOf("epsilon").shown) !== undefined, "and an idle one");
-  assert.equal(bands(keyOf("gamma").shown), undefined, "a finished key has its burst instead");
+  assert.equal(bands(keyOf("zeta").shown), undefined, "a failed key stays plain");
 
   const before = first.shown;
   clock.now += 100;

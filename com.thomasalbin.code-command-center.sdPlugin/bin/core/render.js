@@ -7,7 +7,13 @@ import { LOGOS } from "./logos.js";
 /** @typedef {import("./logos.js").Logo} Logo */
 /** @typedef {Readonly<Record<App, Logo>>} Logos */
 /** @typedef {import("./state.js").DisplayState} DisplayState */
-/** @typedef {{ colours: ReadonlyArray<string>, opacity: number, glintOpacity: number }} SheenLook */
+/**
+ * @typedef {object} SheenLook
+ * @property {ReadonlyArray<string | null>} colours of the bands, in the order they drift past; `null` leaves a gap
+ * @property {number} opacity of the bands
+ * @property {string} [glintColour] white unless given
+ * @property {number} glintOpacity
+ */
 
 const FONT = "Helvetica, Arial, sans-serif";
 const CENTRE = KEY_SIZE / 2;
@@ -37,10 +43,10 @@ const EMPTY = { bg: "#0D1117", fg: "#484F58" };
 const NOT_RUNNING = { bg: "#0D1117", fg: "#8B949E" };
 const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D1D9", track: "#30363D" };
 /**
- * The holographic shimmer of a working, waiting or idle key: bands of colour
- * that drift across it, and a glint that sweeps over it once in each cycle. It
- * lies between the key's colour and what is drawn on it, so the logo and the
- * label stay sharp.
+ * The holographic shimmer of a working, waiting, finished or idle key: bands
+ * of colour that drift across it, and a glint that sweeps over it once in each
+ * cycle. It lies between the key's colour and what is drawn on it, so the logo
+ * and the label stay sharp.
  */
 const SHEEN = {
   /** The direction the bands drift in, in degrees down from the horizontal. */
@@ -53,14 +59,17 @@ const SHEEN = {
   glintShare: 0.55,
   /**
    * How the shimmer looks on each kind of key. Cool colours on a working key's
-   * blue; warm ones on a waiting key's orange, where cool ones turn grey; and
-   * faint green ones on an idle key, whose pale label a strong glint would wash out.
+   * blue; warm ones on a waiting key's orange and light ones on a finished
+   * key's green, where cool ones turn grey or brown. An idle key is dark: a wash
+   * of colour over it looks grey, so it has green ribbons with dark gaps between
+   * them, and a mint glint, since a white one turns grey there too.
    * @type {{ working: SheenLook } & Partial<Record<DisplayState, SheenLook>>}
    */
   looks: {
     working: { colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"], opacity: 0.38, glintOpacity: 0.65 },
     waiting: { colours: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"], opacity: 0.38, glintOpacity: 0.65 },
-    idle: { colours: ["#6BFFB8", "#00E5FF", "#C6FF5C", "#7DF9FF", "#B44DFF"], opacity: 0.22, glintOpacity: 0.25 },
+    done: { colours: ["#FFE45C", "#C6FF5C", "#7DF9FF", "#FFF3A0", "#6BFFB8"], opacity: 0.45, glintOpacity: 0.65 },
+    idle: { colours: ["#00FFA3", null, "#00D1FF", null, "#7CFF4F"], opacity: 0.45, glintColour: "#B0FFD9", glintOpacity: 0.35 },
   },
 };
 /**
@@ -238,7 +247,7 @@ export function svgToDataUri(svg) {
  * @param {SheenLook} look the bands' colours, in the order they drift past, and how strongly they and the glint show
  * @returns {string} SVG, to lie over the key's colour
  */
-function sheen(phase, { colours, opacity, glintOpacity }) {
+function sheen(phase, { colours, opacity, glintColour = "#FFFFFF", glintOpacity }) {
   const { period, glint } = SHEEN;
   const angle = (SHEEN.angle * Math.PI) / 180;
   const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
@@ -254,10 +263,12 @@ function sheen(phase, { colours, opacity, glintOpacity }) {
   // Four periods cover the key wherever the bands are; one later the pattern is the same again.
   const start = (phase - 1) * period;
   const count = 4 * colours.length;
-  const stops = Array.from(
-    { length: count + 1 },
-    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${opacity}"/>`,
-  ).join("");
+  const stops = Array.from({ length: count + 1 }, (_, index) => {
+    const colour = colours[index % colours.length];
+    // A gap fades out the colour before it, so no grey lies between the bands.
+    const shown = colour ?? colours[(index - 1 + colours.length) % colours.length] ?? "#FFFFFF";
+    return `<stop offset="${round(index / count, 4)}" stop-color="${shown}" stop-opacity="${colour === null ? 0 : opacity}"/>`;
+  }).join("");
   let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(start, start + 4 * period)}>${stops}</linearGradient>`;
   let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
 
@@ -266,9 +277,9 @@ function sheen(phase, { colours, opacity, glintOpacity }) {
     const centre = -glint + crossed * (reach + 2 * glint);
     defs +=
       `<linearGradient id="glint" gradientUnits="userSpaceOnUse" ${along(centre - glint, centre + glint)}>` +
-      `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
-      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${glintOpacity}"/>` +
-      `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`;
+      `<stop offset="0" stop-color="${glintColour}" stop-opacity="0"/>` +
+      `<stop offset="0.5" stop-color="${glintColour}" stop-opacity="${glintOpacity}"/>` +
+      `<stop offset="1" stop-color="${glintColour}" stop-opacity="0"/></linearGradient>`;
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
