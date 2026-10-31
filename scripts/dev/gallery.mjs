@@ -41,7 +41,7 @@ const rows = [
     renderQuotaKey({ title: "7d", percent: 72, value: "18:00", footer: "resets Wed", even: 60 }),
     renderQuotaKey({ title: "7d", tag: "Argon", percent: 13, value: "21:36", footer: "resets Mon" }),
     renderQuotaKey({ title: "5h", tag: "Claude", footer: "for 2h 13m", grass: 0.2 }),
-    renderQuotaKey({ title: "7d", tag: "Claude", percent: 41, footer: "3d 4h" }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 41, footer: "3d 4h", shine: 0.15 }),
   ],
   [
     renderSessionKey({ app: "desktop", state: "working", label: "atlas", time: "12m" }),
@@ -54,7 +54,7 @@ const rows = [
     renderSessionKey({ app: "desktop", state: "working", label: "test", holo: 0.25 }),
     renderSessionKey({ app: "desktop", state: "waiting", label: "examples", pinned: true }),
     renderSessionKey({ app: "vscode", state: "done", label: "misty-streams", burst: 0.3 }),
-    renderSessionKey({ app: "vscode", state: "idle", label: "weather-api", pinned: true }),
+    renderSessionKey({ app: "vscode", state: "idle", label: "weather-api", pinned: true, holo: 0.35 }),
     logoKey,
   ],
   [
@@ -76,7 +76,11 @@ const rows = [
 const cells = rows
   .flatMap((row, rowIndex) =>
     row.map((svg, column) =>
-      svg.replace("<svg ", `<svg x="${GAP + column * (CELL + GAP)}" y="${GAP + rowIndex * (CELL + GAP)}" `),
+      svg
+        // Each key is its own image on the deck; in one picture the ids of their gradients must not meet.
+        .replaceAll(/id="([a-z]+)"/g, `id="$1-${rowIndex}-${column}"`)
+        .replaceAll(/url\(#([a-z]+)\)/g, `url(#$1-${rowIndex}-${column})`)
+        .replace("<svg ", `<svg x="${GAP + column * (CELL + GAP)}" y="${GAP + rowIndex * (CELL + GAP)}" `),
     ),
   )
   .join("");

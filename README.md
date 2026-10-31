@@ -43,7 +43,7 @@ Each key is labelled with the session's project folder and carries a mark for it
 - **Clock:** a working or waiting key has a clock in its top right corner, from the first full minute on. On a blue key it is how long the turn has been running; a permission prompt in the middle does not restart it. On an orange key it is how long the session has waited.
 - **Reason:** the last line of an orange key says what the session waits for, in the first word Claude Code uses for it: `permission`, `dialog`, `input`. An Antigravity CLI key only ever waits for `permission`: a tool call that needs your approval.
 - **Pulse:** after five minutes of waiting the key gets a white frame and pulses once a second. Pressing the key stops the pulse; the clock keeps counting.
-- **Gen-Z mode:** tick **Gen-Z mode** in the settings of any session key in the Stream Deck app, and the keys come alive. Keys of sessions that are working or waiting for you shimmer like holographic foil: bands of colour drift across them, cool ones on a working key and warm ones on a waiting key, and every four seconds a glint sweeps over them, travelling across the deck from the top left. When a session finishes, its key bursts as it turns green: the logo pops, a ring spreads from it and confetti flies out. And a quota key whose limit is full tells you to touch grass, with grass swaying along its bottom and how long until the limit resets, such as `for 2h 13m`. The setting applies to all session keys at once and is off until you switch it on. While a key moves, the plugin redraws it ten times a second.
+- **Gen-Z mode:** the keys can shimmer, burst and more; see [Gen-Z mode](#gen-z-mode).
 - **Automatic keys** fill with sessions in reading order: waiting first, then working, then the most recently started. A session keeps its key for as long as it runs. A `+2` in the top left corner of the last key counts sessions that have no key.
 - **Reserved keys** always show one project and carry a small pin. Reserve a key in either of two ways:
   - Select the key in the Stream Deck app and pick a project under **Session**.
@@ -65,6 +65,23 @@ The quota keys need the [mod](#2-the-mod-for-the-quota-keys). Without it they sh
 **Antigravity quota keys** work the same way, for the limits of the Antigravity CLI. The CLI has a limit for each group of models in each window, such as one for Gemini and one for third-party models, and a model can have a limit of its own. So each key shows one group, named in its top right corner: `Gemini`, `3rd party`, or the model's name, such as `Argon`. Choose the group under **Limit of** in the key's settings in the Stream Deck app; until you do, it is Gemini. The list offers the groups the CLI has reported, and each key can show a different one.
 
 A new reading arrives each time an Antigravity CLI session changes state. The limits belong to your account, so every session writes the same reading and the newest wins. These keys need the [bridge](#4-the-bridge-for-the-antigravity-cli-keys); without it they show `no data`.
+
+### Gen-Z mode
+
+Tick **Gen-Z mode** under **Effects** in the settings of any session key in the Stream Deck app, and the keys come alive. The setting holds for all keys at once, session keys and quota keys alike, and is off until you switch it on.
+
+| Key | In Gen-Z mode |
+|---|---|
+| Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and every four seconds a glint sweeps over it |
+| Waiting (orange) | Shimmers the same way, in warm colours |
+| Idle (dim green) | Shimmers faintly, in green, so its label stays easy to read |
+| Finished (bright green) | Bursts as it turns green: for 1.6 seconds the logo pops, a ring spreads from it and confetti flies out |
+| Quota | A highlight runs along the bar every three seconds |
+| Quota, limit full | Says `touch grass` in place of the percent and the bar, with how long until the limit resets, such as `for 2h 13m`, and grass sways along its bottom |
+
+The glint reaches each session key a little after the one to its upper left, so it travels across the deck. The shimmer lies beneath the logo and the label, and only the confetti flies over them. A finished key bursts only when its session is seen to finish, not when a page with a key that is already green comes into view. A press works as always; on a full quota key it still shows the time the limit resets.
+
+While a key moves, the plugin redraws it ten times a second. With Gen-Z mode off, keys are redrawn as before.
 
 ## Requirements
 

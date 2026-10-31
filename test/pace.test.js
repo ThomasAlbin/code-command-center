@@ -220,6 +220,17 @@ test("a key that says to touch grass has grass that sways, and no bar", () => {
   assert.ok(!svg.includes("NaN") && !svg.includes("undefined"));
 });
 
+test("in Gen-Z mode a highlight runs along the bar, within its filled part", () => {
+  const at = (/** @type {number | undefined} */ shine, percent = 50) => renderQuotaKey({ title: "5h", percent, footer: "2h", shine });
+  assert.ok(!at(undefined).includes("url(#shine)"));
+  const running = at(0.2);
+  assert.ok(running.includes("url(#shine)"));
+  assert.ok(/<rect x="12" y="96" width="60" height="10" rx="5" fill="url\(#shine\)"\/>/.test(running), "the shape of the filled part");
+  assert.notEqual(at(0.1), at(0.3), "it moves");
+  assert.ok(!at(0.7).includes("url(#shine)"), "then it rests");
+  assert.ok(!at(0.2, 0).includes("url(#shine)"), "an empty bar has nothing to shine along");
+});
+
 test("the time a limit resets takes the place of the percent", () => {
   const svg = renderQuotaKey({ title: "7d", percent: 70, value: "18:00", footer: "resets Wed" });
   assert.ok(/font-size="44" fill="[^"]+">18:00</.test(svg));

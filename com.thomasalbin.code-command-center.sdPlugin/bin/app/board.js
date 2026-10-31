@@ -64,10 +64,10 @@ const REDRAW_MS = 60_000;
 const CLOCK_MS = 5_000;
 /** How long each half of the pulse of a key that has waited too long lasts. */
 const PULSE_MS = 1_000;
-/** In Gen-Z mode: one cycle of the holographic shimmer of a key whose session is working or waiting. */
+/** In Gen-Z mode: one cycle of the holographic shimmer of a key whose session is working, waiting or idle. */
 const HOLO_MS = 4_000;
 /** @type {ReadonlySet<DisplayState>} */
-const SHIMMERING = new Set(["working", "waiting"]);
+const SHIMMERING = new Set(["working", "waiting", "idle"]);
 /** How much later the shimmer reaches the next key along, so it travels across the deck. */
 const HOLO_STAGGER_MS = 300;
 /** In Gen-Z mode: how long a key bursts into confetti when its session finishes. */

@@ -9,9 +9,12 @@ import { describeLimit } from "../core/usage.js";
 
 /** How long a press shows when the limit resets. */
 const RESET_SHOWN_MS = 3000;
-/** In Gen-Z mode: one sway of the grass on a key whose limit is full, and how often it is redrawn. */
+/** In Gen-Z mode: one sway of the grass on a key whose limit is full. */
 const GRASS_MS = 2_400;
-const GRASS_FRAME_MS = 200;
+/** In Gen-Z mode: one cycle of the highlight that runs along a bar. */
+const SHINE_MS = 3_000;
+/** How often a key is redrawn while it moves. */
+const FRAME_MS = 100;
 
 /**
  * @typedef {object} QuotaKey
@@ -23,8 +26,8 @@ const GRASS_FRAME_MS = 200;
 
 /**
  * A key that shows how much of one plan limit is used. A press shows the time
- * the limit resets, for a moment, and in Gen-Z mode a full limit tells you to
- * touch grass. The Antigravity CLI has a limit per group of models in each
+ * the limit resets, for a moment. In Gen-Z mode a highlight runs along the bar,
+ * and a full limit tells you to touch grass. The Antigravity CLI has a limit per group of models in each
  * window, so each of its keys shows the group chosen in its settings.
  */
 export class QuotaAction extends SingletonAction {
@@ -37,9 +40,9 @@ export class QuotaAction extends SingletonAction {
   #tag;
   /** @type {Map<string, QuotaKey>} */
   #keys = new Map();
-  /** Whether a full limit tells you to touch grass, a setting for all keys at once. */
+  /** Whether bars shine and a full limit tells you to touch grass, a setting for all keys at once. */
   #genZ = false;
-  /** @type {ReturnType<typeof setTimeout> | undefined} the next frame of swaying grass */
+  /** @type {ReturnType<typeof setTimeout> | undefined} the next frame while a key moves */
   #frame;
 
   /**
@@ -156,14 +159,18 @@ export class QuotaAction extends SingletonAction {
   }
 
   #draw() {
-    const grass = this.#genZ ? (Date.now() % GRASS_MS) / GRASS_MS : undefined;
-    let swaying = false;
+    const now = Date.now();
+    const grass = this.#genZ ? (now % GRASS_MS) / GRASS_MS : undefined;
+    const shine = this.#genZ ? (now % SHINE_MS) / SHINE_MS : undefined;
+    let moving = false;
     for (const key of this.#keys.values()) {
       const kind = key.group === undefined ? this.#window : `${this.#window}:${key.group}`;
       const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind), { reset: key.reset !== undefined, grass });
-      if (view.grass !== undefined) swaying = true;
+      // An empty bar has nothing to shine along.
+      const shining = shine !== undefined && view.grass === undefined && (view.percent ?? 0) > 0;
+      if (view.grass !== undefined || shining) moving = true;
       const tag = key.group === undefined ? this.#tag : groupLabel(key.group);
-      const svg = renderQuotaKey(tag === undefined ? view : { ...view, tag });
+      const svg = renderQuotaKey({ ...view, ...(tag === undefined ? {} : { tag }), ...(shining ? { shine } : {}) });
       if (key.image === svg) continue;
       key.image = svg;
       key.setImage(svgToDataUri(svg)).catch(() => {
@@ -171,8 +178,8 @@ export class QuotaAction extends SingletonAction {
       });
     }
     clearTimeout(this.#frame);
-    if (!swaying) return;
-    this.#frame = setTimeout(() => this.#draw(), GRASS_FRAME_MS);
+    if (!moving) return;
+    this.#frame = setTimeout(() => this.#draw(), FRAME_MS);
     this.#frame.unref(); // the link to Stream Deck keeps the process alive, not this
   }
 }

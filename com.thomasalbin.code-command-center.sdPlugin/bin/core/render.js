@@ -7,6 +7,7 @@ import { LOGOS } from "./logos.js";
 /** @typedef {import("./logos.js").Logo} Logo */
 /** @typedef {Readonly<Record<App, Logo>>} Logos */
 /** @typedef {import("./state.js").DisplayState} DisplayState */
+/** @typedef {{ colours: ReadonlyArray<string>, opacity: number, glintOpacity: number }} SheenLook */
 
 const FONT = "Helvetica, Arial, sans-serif";
 const CENTRE = KEY_SIZE / 2;
@@ -36,27 +37,31 @@ const EMPTY = { bg: "#0D1117", fg: "#484F58" };
 const NOT_RUNNING = { bg: "#0D1117", fg: "#8B949E" };
 const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D1D9", track: "#30363D" };
 /**
- * The holographic shimmer of a working or waiting key: bands of colour that
- * drift across it, and a glint that sweeps over it once in each cycle. It lies
- * between the key's colour and what is drawn on it, so the logo and the label
- * stay sharp.
+ * The holographic shimmer of a working, waiting or idle key: bands of colour
+ * that drift across it, and a glint that sweeps over it once in each cycle. It
+ * lies between the key's colour and what is drawn on it, so the logo and the
+ * label stay sharp.
  */
 const SHEEN = {
   /** The direction the bands drift in, in degrees down from the horizontal. */
   angle: 30,
   /** The distance after which the bands repeat; they drift by that much in one cycle. */
   period: 96,
-  /** Cool colours on a working key's blue; on a waiting key's orange they would turn grey, so it has warm ones. */
-  colours: {
-    working: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"],
-    waiting: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"],
-  },
-  opacity: 0.38,
   /** Half the width of the glint. */
   glint: 26,
-  glintOpacity: 0.65,
   /** The part of the cycle the glint takes to cross the key. For the rest of it, there is none. */
   glintShare: 0.55,
+  /**
+   * How the shimmer looks on each kind of key. Cool colours on a working key's
+   * blue; warm ones on a waiting key's orange, where cool ones turn grey; and
+   * faint green ones on an idle key, whose pale label a strong glint would wash out.
+   * @type {{ working: SheenLook } & Partial<Record<DisplayState, SheenLook>>}
+   */
+  looks: {
+    working: { colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"], opacity: 0.38, glintOpacity: 0.65 },
+    waiting: { colours: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"], opacity: 0.38, glintOpacity: 0.65 },
+    idle: { colours: ["#6BFFB8", "#00E5FF", "#C6FF5C", "#7DF9FF", "#B44DFF"], opacity: 0.22, glintOpacity: 0.25 },
+  },
 };
 /**
  * The burst of a key whose session has just finished: the logo pops, a ring
@@ -75,6 +80,14 @@ const BURST = {
   pop: 0.25,
   /** The part of the burst the pop takes. */
   popShare: 0.4,
+};
+/** A highlight that runs along the filled part of a quota key's bar. */
+const SHINE = {
+  /** Half its width. */
+  width: 14,
+  opacity: 0.75,
+  /** The part of its cycle it takes to run along the bar. For the rest of it, there is none. */
+  share: 0.4,
 };
 /** The grass along the bottom of a quota key whose limit is full, swaying. */
 const GRASS = {
@@ -123,7 +136,7 @@ export function renderSessionKey(
   const pop = burst === undefined ? 1 : 1 + BURST.pop * Math.sin(Math.PI * Math.min(1, burst / BURST.popShare));
   return frame(
     bg,
-    (holo === undefined ? "" : sheen(holo, state === "waiting" ? SHEEN.colours.waiting : SHEEN.colours.working)) +
+    (holo === undefined ? "" : sheen(holo, SHEEN.looks[state] ?? SHEEN.looks.working)) +
       (burst === undefined ? "" : spreadingRing(burst)) +
       // Without a listing there is no session to show, whichever app the key is for.
       (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size * pop, fg)) +
@@ -163,6 +176,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @property {number} [even] the percent that even use would have reached by now, drawn as a tick on the bar
  * @property {boolean} [warn] the footer is a warning
  * @property {number} [grass] the limit is full: the key tells you to touch grass, with grass that sways, here from 0 to 1 in its cycle
+ * @property {number} [shine] a highlight runs along the bar, here from 0 to 1 in its cycle; no highlight without it
  */
 
 /**
@@ -170,7 +184,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @param {QuotaKeyView} view
  * @returns {string} SVG
  */
-export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass }) {
+export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass, shine }) {
   const used = percent === undefined ? 0 : Math.min(100, Math.max(0, percent));
   const tone = used >= 90 ? PALETTE.error.bg : used >= 70 ? PALETTE.waiting.bg : PALETTE.done.bg;
   const middle = value ?? (percent === undefined ? "–" : `${Math.round(used)}%`);
@@ -194,6 +208,7 @@ export function renderQuotaKey({ title, tag = "", percent, value, footer, even, 
       text(CENTRE, 84, 44, QUOTA.value, "middle", middle) +
       `<rect x="12" y="96" width="120" height="10" rx="5" fill="${QUOTA.track}"/>` +
       (used > 0 ? `<rect x="12" y="96" width="${Math.max(10, Math.round(used * 1.2))}" height="10" rx="5" fill="${tone}"/>` : "") +
+      (used > 0 && shine !== undefined ? barShine(Math.max(10, Math.round(used * 1.2)), shine) : "") +
       (even === undefined ? "" : paceMark(even)) +
       text(CENTRE, 132, footerSize, warn ? PALETTE.waiting.bg : QUOTA.footer, "middle", footer),
   );
@@ -220,10 +235,10 @@ export function svgToDataUri(svg) {
 
 /**
  * @param {number} phase where the shimmer is in its cycle, from 0 to 1
- * @param {ReadonlyArray<string>} colours of the bands, in the order they drift past
+ * @param {SheenLook} look the bands' colours, in the order they drift past, and how strongly they and the glint show
  * @returns {string} SVG, to lie over the key's colour
  */
-function sheen(phase, colours) {
+function sheen(phase, { colours, opacity, glintOpacity }) {
   const { period, glint } = SHEEN;
   const angle = (SHEEN.angle * Math.PI) / 180;
   const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
@@ -241,7 +256,7 @@ function sheen(phase, colours) {
   const count = 4 * colours.length;
   const stops = Array.from(
     { length: count + 1 },
-    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${SHEEN.opacity}"/>`,
+    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${opacity}"/>`,
   ).join("");
   let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(start, start + 4 * period)}>${stops}</linearGradient>`;
   let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
@@ -252,11 +267,34 @@ function sheen(phase, colours) {
     defs +=
       `<linearGradient id="glint" gradientUnits="userSpaceOnUse" ${along(centre - glint, centre + glint)}>` +
       `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
-      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${SHEEN.glintOpacity}"/>` +
+      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${glintOpacity}"/>` +
       `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`;
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
+}
+
+/**
+ * A highlight running along the filled part of a quota key's bar. It is the
+ * bar's own shape, filled with a band of light that moves along it, so it never
+ * spills past the bar's end.
+ *
+ * @param {number} filled width of the filled part
+ * @param {number} phase from 0 to 1 in its cycle
+ * @returns {string} SVG; nothing while it rests
+ */
+function barShine(filled, phase) {
+  const run = phase / SHINE.share;
+  if (run > 1) return "";
+  const { width } = SHINE;
+  const centre = 12 - width + run * (filled + 2 * width);
+  return (
+    `<defs><linearGradient id="shine" gradientUnits="userSpaceOnUse" x1="${round(centre - width)}" y1="0" x2="${round(centre + width)}" y2="0">` +
+    `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${SHINE.opacity}"/>` +
+    `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>` +
+    `<rect x="12" y="96" width="${filled}" height="10" rx="5" fill="url(#shine)"/>`
+  );
 }
 
 /**
