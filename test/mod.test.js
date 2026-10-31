@@ -56,7 +56,7 @@ test("the Stream Deck plugin understands what the mod writes", () => {
   const reading = parseReading(/** @type {string} */ (snapshot(NOW, RATE_LIMITS)));
   assert.ok(reading);
   const view = viewLimit([reading], "five_hour", NOW);
-  assert.deepEqual(view, { status: "ok", percent: 23.5, resetsInMs: 3 * 3_600_000, writtenAt: NOW, stale: false });
+  assert.deepEqual(view, { status: "ok", percent: 23.5, resetsAt: NOW + 3 * 3_600_000, resetsInMs: 3 * 3_600_000, writtenAt: NOW, stale: false });
 });
 
 // The promise the README makes: one hook, four calls. These tests read the

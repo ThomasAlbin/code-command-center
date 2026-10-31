@@ -6,17 +6,22 @@ import { describeLimit } from "../core/usage.js";
 
 /** @typedef {import("../app/usage-monitor.js").UsageMonitor} UsageMonitor */
 
+/** How long a press shows when the limit resets. */
+const RESET_SHOWN_MS = 3000;
+
 /**
  * @typedef {object} QuotaKey
  * @property {(image?: string) => Promise<void>} setImage
  * @property {string} [image] what the key shows now
  * @property {string} [group] the group of models whose limit it shows; only for the Antigravity CLI
+ * @property {ReturnType<typeof setTimeout>} [reset] set while the key shows when its limit resets
  */
 
 /**
- * A key that shows how much of one plan limit is used. Display only: a press
- * does nothing. The Antigravity CLI has a limit per group of models in each
- * window, so each of its keys shows the group chosen in its settings.
+ * A key that shows how much of one plan limit is used. A press shows the time
+ * the limit resets, for a moment. The Antigravity CLI has a limit per group of
+ * models in each window, so each of its keys shows the group chosen in its
+ * settings.
  */
 export class QuotaAction extends SingletonAction {
   /** @override */
@@ -65,7 +70,24 @@ export class QuotaAction extends SingletonAction {
    * @param {import("@elgato/streamdeck").WillDisappearEvent} ev
    */
   onWillDisappear(ev) {
+    clearTimeout(this.#keys.get(ev.action.id)?.reset);
     if (this.#keys.delete(ev.action.id)) this.#usage.release();
+  }
+
+  /**
+   * Shows when the limit resets. Another press while it shows starts the time anew.
+   * @override
+   * @param {import("@elgato/streamdeck").KeyDownEvent} ev
+   */
+  onKeyDown(ev) {
+    const key = this.#keys.get(ev.action.id);
+    if (key === undefined) return;
+    clearTimeout(key.reset);
+    key.reset = setTimeout(() => {
+      key.reset = undefined;
+      this.#draw();
+    }, RESET_SHOWN_MS);
+    this.#draw();
   }
 
   /**
@@ -118,7 +140,7 @@ export class QuotaAction extends SingletonAction {
   #draw() {
     for (const key of this.#keys.values()) {
       const kind = key.group === undefined ? this.#window : `${this.#window}:${key.group}`;
-      const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind));
+      const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind), { reset: key.reset !== undefined });
       const tag = key.group === undefined ? this.#tag : groupLabel(key.group);
       const svg = renderQuotaKey(tag === undefined ? view : { ...view, tag });
       if (key.image === svg) continue;

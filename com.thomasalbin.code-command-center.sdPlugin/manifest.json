@@ -82,7 +82,7 @@
     {
       "UUID": "com.thomasalbin.code-command-center.quota-5h",
       "Name": "Quota 5h",
-      "Tooltip": "Shows how much of the 5-hour plan limit is used and when it resets. Display only.",
+      "Tooltip": "Shows how much of the 5-hour plan limit is used and how long until it resets. Press to see the time it resets.",
       "Icon": "imgs/actions/quota/icon",
       "Controllers": [
         "Keypad"
@@ -98,7 +98,7 @@
     {
       "UUID": "com.thomasalbin.code-command-center.quota-7d",
       "Name": "Quota 7d",
-      "Tooltip": "Shows how much of the 7-day plan limit is used and when it resets. Display only.",
+      "Tooltip": "Shows how much of the 7-day plan limit is used and how long until it resets. Press to see the time it resets.",
       "Icon": "imgs/actions/quota/icon",
       "Controllers": [
         "Keypad"
@@ -114,7 +114,7 @@
     {
       "UUID": "com.thomasalbin.code-command-center.antigravity-quota-5h",
       "Name": "Antigravity Quota 5h",
-      "Tooltip": "Shows how much of a 5-hour limit of the Antigravity CLI is used, for the group of models chosen in its settings. Display only.",
+      "Tooltip": "Shows how much of a 5-hour limit of the Antigravity CLI is used, for the group of models chosen in its settings. Press to see the time it resets.",
       "Icon": "imgs/actions/quota/icon",
       "PropertyInspectorPath": "ui/quota.html",
       "Controllers": [
@@ -131,7 +131,7 @@
     {
       "UUID": "com.thomasalbin.code-command-center.antigravity-quota-7d",
       "Name": "Antigravity Quota 7d",
-      "Tooltip": "Shows how much of a weekly limit of the Antigravity CLI is used, for the group of models chosen in its settings, such as Gemini or Argon. Display only.",
+      "Tooltip": "Shows how much of a weekly limit of the Antigravity CLI is used, for the group of models chosen in its settings, such as Gemini or Argon. Press to see the time it resets.",
       "Icon": "imgs/actions/quota/icon",
       "PropertyInspectorPath": "ui/quota.html",
       "Controllers": [

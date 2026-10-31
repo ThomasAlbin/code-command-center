@@ -99,10 +99,18 @@ export function formatClock(timestamp) {
 
 /**
  * @param {number} timestamp Unix milliseconds
+ * @returns {string} local day of the week, such as `Sat`
+ */
+export function formatDay(timestamp) {
+  return DAYS[new Date(timestamp).getDay()];
+}
+
+/**
+ * @param {number} timestamp Unix milliseconds
  * @returns {string} local day and time, such as `Sat 18:00`
  */
 export function formatDayClock(timestamp) {
-  return `${DAYS[new Date(timestamp).getDay()]} ${formatClock(timestamp)}`;
+  return `${formatDay(timestamp)} ${formatClock(timestamp)}`;
 }
 
 /**

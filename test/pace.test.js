@@ -152,14 +152,36 @@ test("without a warning the countdown stays and the tick is added", () => {
 });
 
 test("a run-out days away is named with its day", () => {
-  const view = /** @type {const} */ ({ status: "ok", percent: 70, resetsInMs: 2 * DAY, writtenAt: NOW, stale: false });
+  const view = /** @type {const} */ ({ status: "ok", percent: 70, resetsAt: NOW + 2 * DAY, resetsInMs: 2 * DAY, writtenAt: NOW, stale: false });
   const described = describeLimit("7d", view, { even: 71, fullAt: new Date(2026, 9, 9, 6, 30).getTime() });
   assert.equal(described.footer, "full Fri 06:30");
 });
 
 test("an old reading keeps its tick but does not warn", () => {
-  const view = /** @type {const} */ ({ status: "ok", percent: 70, resetsInMs: HOUR, writtenAt: new Date(2026, 9, 8, 9, 5).getTime(), stale: true });
+  const view = /** @type {const} */ ({ status: "ok", percent: 70, resetsAt: NOW + HOUR, resetsInMs: HOUR, writtenAt: new Date(2026, 9, 8, 9, 5).getTime(), stale: true });
   assert.deepEqual(describeLimit("5h", view, { even: 80, fullAt: NOW + MINUTE }), { title: "5h", percent: 70, even: 80, footer: "as of 09:05" });
+});
+
+test("a press names the time the limit resets, with its day when that is not today", () => {
+  const soon = /** @type {const} */ ({ status: "ok", percent: 70, resetsAt: NOW + 2 * HOUR, resetsInMs: 2 * HOUR, writtenAt: NOW, stale: false });
+  assert.deepEqual(describeLimit("5h", soon, { even: 80, fullAt: NOW + HOUR }, { reset: true }), {
+    title: "5h",
+    percent: 70,
+    even: 80,
+    value: "14:00",
+    footer: "resets",
+  });
+  const later = { ...soon, resetsAt: NOW + 2 * DAY, resetsInMs: 2 * DAY };
+  assert.deepEqual(describeLimit("7d", later, undefined, { reset: true }), { title: "7d", percent: 70, value: "12:00", footer: "resets Sat" });
+  const old = { ...soon, writtenAt: new Date(2026, 9, 8, 9, 5).getTime(), stale: true };
+  assert.equal(describeLimit("5h", old, undefined, { reset: true }).footer, "resets", "an old reading still knows when it resets");
+});
+
+test("a press changes nothing while the reset time is not known", () => {
+  const unknown = /** @type {const} */ ({ status: "ok", percent: 70, resetsAt: undefined, resetsInMs: undefined, writtenAt: NOW, stale: false });
+  assert.deepEqual(describeLimit("5h", unknown, undefined, { reset: true }), describeLimit("5h", unknown));
+  assert.deepEqual(describeLimit("5h", { status: "none" }, undefined, { reset: true }), { title: "5h", footer: "no data" });
+  assert.deepEqual(describeLimit("5h", { status: "reset" }, undefined, { reset: true }), { title: "5h", percent: 0, footer: "reset" });
 });
 
 /** @param {string} svg */
@@ -177,4 +199,11 @@ test("a warning is drawn in the warning colour and still fits the key", () => {
   const warning = renderQuotaKey({ title: "7d", percent: 70, footer: "full Wed 18:00", warn: true });
   assert.ok(/font-size="20" fill="#C9D1D9">2d</.test(calm));
   assert.ok(/font-size="18" fill="#F0883E">full Wed 18:00</.test(warning), "a long footer is set smaller");
+});
+
+test("the time a limit resets takes the place of the percent", () => {
+  const svg = renderQuotaKey({ title: "7d", percent: 70, value: "18:00", footer: "resets Wed" });
+  assert.ok(/font-size="44" fill="[^"]+">18:00</.test(svg));
+  assert.ok(!svg.includes("70%"));
+  assert.ok(/font-size="20" fill="#C9D1D9">resets Wed</.test(svg), "the day fits at the usual size");
 });
