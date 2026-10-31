@@ -36,22 +36,45 @@ const EMPTY = { bg: "#0D1117", fg: "#484F58" };
 const NOT_RUNNING = { bg: "#0D1117", fg: "#8B949E" };
 const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D1D9", track: "#30363D" };
 /**
- * The holographic shimmer of a working key: bands of colour that drift across
- * it, and a glint that sweeps over it once in each cycle. It lies between the
- * key's colour and what is drawn on it, so the logo and the label stay sharp.
+ * The holographic shimmer of a working or waiting key: bands of colour that
+ * drift across it, and a glint that sweeps over it once in each cycle. It lies
+ * between the key's colour and what is drawn on it, so the logo and the label
+ * stay sharp.
  */
 const SHEEN = {
   /** The direction the bands drift in, in degrees down from the horizontal. */
   angle: 30,
   /** The distance after which the bands repeat; they drift by that much in one cycle. */
   period: 96,
-  colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"],
+  /** Cool colours on a working key's blue; on a waiting key's orange they would turn grey, so it has warm ones. */
+  colours: {
+    working: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"],
+    waiting: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"],
+  },
   opacity: 0.38,
   /** Half the width of the glint. */
   glint: 26,
   glintOpacity: 0.65,
   /** The part of the cycle the glint takes to cross the key. For the rest of it, there is none. */
   glintShare: 0.55,
+};
+/**
+ * The burst of a key whose session has just finished: the logo pops, a ring
+ * spreads from it, and confetti flies out and falls.
+ */
+const BURST = {
+  colours: ["#FFE45C", "#FF5CC8", "#00E5FF", "#B44DFF", "#FFFFFF", "#6BFFB8"],
+  pieces: 16,
+  /** Where the pieces start, around the logo rather than on it. */
+  start: 16,
+  /** How far the farthest piece flies. */
+  reach: 64,
+  /** How far the pieces have dropped by the end. */
+  fall: 28,
+  /** How much larger the logo grows at the top of its pop. */
+  pop: 0.25,
+  /** The part of the burst the pop takes. */
+  popShare: 0.4,
 };
 
 /**
@@ -66,6 +89,7 @@ const SHEEN = {
  * @property {boolean} [urgent] the session has waited long without being looked at
  * @property {boolean} [lit] the bright half of an urgent key's pulse
  * @property {number} [holo] where the holographic shimmer is in its cycle, from 0 to 1; no shimmer without it
+ * @property {number} [burst] how far the burst of a session that just finished has got, from 0 to 1; no burst without it
  */
 
 /**
@@ -77,7 +101,7 @@ const SHEEN = {
  * @returns {string} SVG
  */
 export function renderSessionKey(
-  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo },
+  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo, burst },
   logos = LOGOS,
 ) {
   const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : PALETTE[state];
@@ -87,17 +111,20 @@ export function renderSessionKey(
     reason === ""
       ? labelText(fitted, fg)
       : labelText(fitted, fg, fitted.lines.length === 2 ? 90 : 94, SMALLEST) + text(CENTRE, 131, SMALLEST, fg, "middle", reason, 400);
+  const pop = burst === undefined ? 1 : 1 + BURST.pop * Math.sin(Math.PI * Math.min(1, burst / BURST.popShare));
   return frame(
     bg,
-    (holo === undefined ? "" : sheen(holo)) +
+    (holo === undefined ? "" : sheen(holo, state === "waiting" ? SHEEN.colours.waiting : SHEEN.colours.working)) +
+      (burst === undefined ? "" : spreadingRing(burst)) +
       // Without a listing there is no session to show, whichever app the key is for.
-      (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size, fg)) +
+      (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size * pop, fg)) +
       name +
       // The pin and the count share the left corner: only an automatic key carries a count.
       (overflow > 0 ? text(CORNER, 26, 22, fg, "start", `+${overflow}`) : "") +
       (time === "" ? "" : text(KEY_SIZE - CORNER, 26, 22, fg, "end", time)) +
       (pinned ? pin(fg) : "") +
-      (urgent ? ring(lit ? PALETTE.waiting.bg : RING) : ""),
+      (urgent ? ring(lit ? PALETTE.waiting.bg : RING) : "") +
+      (burst === undefined ? "" : confetti(burst)),
   );
 }
 
@@ -171,10 +198,11 @@ export function svgToDataUri(svg) {
 
 /**
  * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {ReadonlyArray<string>} colours of the bands, in the order they drift past
  * @returns {string} SVG, to lie over the key's colour
  */
-function sheen(phase) {
-  const { period, colours, glint } = SHEEN;
+function sheen(phase, colours) {
+  const { period, glint } = SHEEN;
   const angle = (SHEEN.angle * Math.PI) / 180;
   const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
   /** How far the key reaches in the direction of the drift. */
@@ -207,6 +235,51 @@ function sheen(phase) {
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
+}
+
+/**
+ * A ring that spreads from the logo and fades, beneath the logo and the label.
+ * @param {number} progress from 0 to 1
+ * @returns {string} SVG
+ */
+function spreadingRing(progress) {
+  const out = easeOut(progress);
+  return (
+    `<circle cx="${LOGO.cx}" cy="${LOGO.cy}" r="${round(12 + 70 * out)}" fill="none" stroke="#FFFFFF" ` +
+    `stroke-width="${round(6 - 5 * out)}" stroke-opacity="${round(0.7 * (1 - progress), 2)}"/>`
+  );
+}
+
+/**
+ * Pieces of confetti that fly out from the logo, tumble, fall and fade, over everything else.
+ * @param {number} progress from 0 to 1
+ * @returns {string} SVG
+ */
+function confetti(progress) {
+  const { pieces, colours } = BURST;
+  const out = easeOut(progress);
+  const opacity = round(1 - progress * progress, 2);
+  return Array.from({ length: pieces }, (_, index) => {
+    // Spread around the logo, with some pieces flying farther than others.
+    const angle = (index / pieces) * 2 * Math.PI + (index % 3) * 0.35;
+    const reach = BURST.reach * (0.55 + 0.45 * (((index * 7) % 5) / 4));
+    const distance = BURST.start + reach * out;
+    const x = LOGO.cx + Math.cos(angle) * distance;
+    const y = LOGO.cy + Math.sin(angle) * distance + BURST.fall * progress * progress;
+    const turn = ((index % 2 === 0 ? 1 : -1) * 360 * progress + index * 40) % 360;
+    return (
+      `<rect x="-4" y="-2" width="8" height="4" rx="1" fill="${colours[index % colours.length]}" fill-opacity="${opacity}" ` +
+      `transform="translate(${round(x)} ${round(y)}) rotate(${round(turn)})"/>`
+    );
+  }).join("");
+}
+
+/**
+ * @param {number} progress from 0 to 1
+ * @returns {number} fast at first, slowing to a stop
+ */
+function easeOut(progress) {
+  return 1 - (1 - progress) ** 3;
 }
 
 /**

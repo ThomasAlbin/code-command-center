@@ -483,19 +483,25 @@ test("a pulsing key redraws by itself", async () => {
 /** @param {string} svg where the shimmer's bands start; nothing without a shimmer */
 const bands = (svg) => /<linearGradient id="sheen"[^>]* x1="([^"]+)"/.exec(svg)?.[1];
 
-test("once switched on, keys of working sessions shimmer, each a little after the one before", () => {
+test("in Gen-Z mode, keys of working and waiting sessions shimmer, each a little after the one before", () => {
   const clock = { now: NOW };
-  const { board } = setUp([tracked("alpha", "desktop", "working"), tracked("beta", "desktop", "working"), tracked("gamma", "desktop", "idle")], clock);
-  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2)];
+  const { board } = setUp(
+    [tracked("alpha", "desktop", "working"), tracked("beta", "desktop", "working"), tracked("gamma", "desktop", "idle"), tracked("delta", "desktop", "waiting")],
+    clock,
+  );
+  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2), fakeKey("d", 0, 3)];
   for (const key of keys) board.keyAppeared("desktop", key);
   board.render();
   assert.ok(keys.every((key) => bands(key.shown) === undefined), "off unless switched on");
 
-  board.globalSettingsChanged({ holo: true });
-  const [first, second, idle] = keys;
+  board.globalSettingsChanged({ genZ: true });
+  // Reading order puts the waiting session first.
+  const [waiting, first, second, idle] = keys;
+  assert.ok(waiting.shown.includes(">delta<") && idle.shown.includes(">gamma<"));
   assert.ok(bands(first.shown) !== undefined && bands(second.shown) !== undefined);
   assert.notEqual(bands(first.shown), bands(second.shown), "the shimmer travels across the deck");
-  assert.equal(bands(idle.shown), undefined, "only working keys shimmer");
+  assert.ok(bands(waiting.shown) !== undefined, "a waiting key shimmers as well");
+  assert.equal(bands(idle.shown), undefined, "an idle key does not");
 
   const before = first.shown;
   clock.now += 100;
@@ -506,22 +512,59 @@ test("once switched on, keys of working sessions shimmer, each a little after th
   assert.ok(keys.every((key) => bands(key.shown) === undefined));
 });
 
-test("only a setting of true switches the shimmer on", () => {
+test("only a setting of true switches Gen-Z mode on", () => {
   const { board } = setUp([tracked("alpha", "desktop", "working")]);
   const key = fakeKey("a", 0, 0);
   board.keyAppeared("desktop", key);
-  for (const settings of [null, [], { holo: "yes" }, { holo: 1 }]) {
+  for (const settings of [null, [], { genZ: "yes" }, { genZ: 1 }, { holo: true }]) {
     board.globalSettingsChanged(settings);
     board.render();
     assert.equal(bands(key.shown), undefined, JSON.stringify(settings));
   }
 });
 
+/** @param {string} svg whether confetti flies on the key */
+const bursting = (svg) => svg.includes('fill-opacity="') && svg.includes(" rotate(");
+
+test("in Gen-Z mode, a key bursts into confetti when its session finishes, and only then", () => {
+  const clock = { now: NOW };
+  const working = tracked("alpha", "desktop", "working");
+  const { board, monitor } = setUp([working], clock);
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.globalSettingsChanged({ genZ: true });
+
+  // What the monitor records when the session goes quiet.
+  clock.now += 5_000;
+  monitor.sessions = [{ ...working, memo: { base: "idle", lastChange: clock.now, doneSince: clock.now } }];
+  monitor.emit();
+  assert.ok(key.shown.includes("#2EA043") && bursting(key.shown), "green, with confetti");
+  clock.now += 800;
+  board.render();
+  assert.ok(bursting(key.shown), "still flying");
+  clock.now += 900;
+  board.render();
+  assert.ok(key.shown.includes("#2EA043") && !bursting(key.shown), "then the key settles");
+
+  const late = fakeKey("b", 1, 0);
+  board.keyAppeared("desktop", late);
+  board.render();
+  assert.ok(!bursting(late.shown), "a key that appears later does not burst");
+});
+
+test("without Gen-Z mode a finishing session only turns green", () => {
+  const { board } = setUp([tracked("alpha", "desktop", "idle", NOW, {}, { doneSince: NOW })]);
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.render();
+  assert.ok(key.shown.includes("#2EA043") && !bursting(key.shown));
+});
+
 test("a shimmering key redraws by itself", async () => {
   const { board } = setUp([tracked("alpha", "desktop", "working")], { get now() { return Date.now(); } });
   const key = fakeKey("a", 0, 0);
   board.keyAppeared("desktop", key);
-  board.globalSettingsChanged({ holo: true });
+  board.globalSettingsChanged({ genZ: true });
   const drawn = key.images.length;
 
   await new Promise((resolve) => setTimeout(resolve, 350));

@@ -1,12 +1,12 @@
 // The settings panel of a session key: one dropdown to reserve the key for a
-// project, and a switch for the shimmer of working keys, which holds for all
-// keys. It talks only to the Stream Deck app, over the local connection
+// project, and a switch for Gen-Z mode, in which keys shimmer and burst, which
+// holds for all keys. It talks only to the Stream Deck app, over the local connection
 // Stream Deck hands every settings panel, and loads nothing from the network.
 
 /** @type {HTMLSelectElement} */
 const select = /** @type {HTMLSelectElement} */ (document.getElementById("pin"));
 /** @type {HTMLInputElement} */
-const holo = /** @type {HTMLInputElement} */ (document.getElementById("holo"));
+const genZ = /** @type {HTMLInputElement} */ (document.getElementById("genz"));
 /** @type {WebSocket | undefined} */
 let socket;
 let context = "";
@@ -49,7 +49,7 @@ function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _info, actionI
       select.value = pin;
     } else if (data.event === "didReceiveGlobalSettings" && isObject(data.payload?.settings)) {
       shared = data.payload.settings;
-      holo.checked = shared.holo === true;
+      genZ.checked = shared.genZ === true;
     }
   });
 }
@@ -61,8 +61,8 @@ select.addEventListener("change", () => {
   send({ event: "setSettings", context, payload: pin === "" ? {} : { pin } });
 });
 
-holo.addEventListener("change", () => {
-  shared = { ...shared, holo: holo.checked };
+genZ.addEventListener("change", () => {
+  shared = { ...shared, genZ: genZ.checked };
   send({ event: "setGlobalSettings", context, payload: shared });
 });
 

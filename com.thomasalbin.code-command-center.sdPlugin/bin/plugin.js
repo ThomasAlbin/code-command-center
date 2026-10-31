@@ -138,12 +138,12 @@ streamDeck.system.onSystemDidWakeUp(() => {
   antigravityUsage.refresh();
 });
 
-// Whether working keys shimmer is set in any session key's settings panel, for all keys at once.
+// Gen-Z mode, in which keys shimmer and burst, is switched in any session key's settings panel, for all keys at once.
 streamDeck.settings.onDidReceiveGlobalSettings((ev) => board.globalSettingsChanged(ev.settings));
 
 await streamDeck.connect();
 logger.info("Code Command Center connected");
 streamDeck.settings.getGlobalSettings().then(
   (settings) => board.globalSettingsChanged(settings),
-  () => logger.warn("The plugin's settings could not be read; working keys do not shimmer"),
+  () => logger.warn("The plugin's settings could not be read; Gen-Z mode stays off"),
 );

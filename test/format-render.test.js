@@ -113,6 +113,16 @@ test("a shimmering key keeps its colour, with the shimmer beneath the logo and t
   assert.ok(!shimmering.includes("NaN") && !shimmering.includes("undefined"));
 });
 
+test("a waiting key shimmers in warm colours, so its orange does not turn grey", () => {
+  /** @param {import("../com.thomasalbin.code-command-center.sdPlugin/bin/core/state.js").DisplayState} state */
+  const colours = (state) => [...renderSessionKey({ app: "desktop", state, label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.38"/g)].map((match) => match[1]);
+  assert.ok(colours("working").includes("#00E5FF"));
+  assert.ok(!colours("waiting").includes("#00E5FF"));
+  assert.ok(colours("waiting").includes("#FFE45C"));
+  const pulsing = renderSessionKey({ app: "desktop", state: "waiting", label: "alpha", urgent: true, lit: true, holo: 0.2 });
+  assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");
+});
+
 test("the glint crosses a shimmering key early in each cycle, and the bands keep drifting", () => {
   /** @param {number} phase */
   const at = (phase) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: phase });
@@ -121,6 +131,27 @@ test("the glint crosses a shimmering key early in each cycle, and the bands keep
   assert.ok(!at(0.8).includes("url(#glint)"), "then it rests");
   assert.notEqual(at(0.8), at(0.9), "the bands still move");
   assert.equal(at(0.3), at(0.3), "the same moment is the same image, so nothing is sent twice");
+});
+
+test("a key whose session just finished bursts: the logo pops, a ring spreads and confetti flies and fades", () => {
+  /** @param {number} [burst] */
+  const at = (burst) => renderSessionKey({ app: "desktop", state: "done", label: "alpha", burst });
+  /** @param {string} svg */
+  const logoScale = (svg) => Number(/<path transform="translate\([\d.]+ [\d.]+\) scale\(([\d.]+)\)"/.exec(svg)?.[1]);
+  /** @param {string} svg */
+  const pieces = (svg) => [...svg.matchAll(/fill-opacity="([\d.]+)" transform="translate\(([-\d.]+) ([-\d.]+)\)/g)];
+
+  assert.ok(!at().includes("<circle") && pieces(at()).length === 0, "no burst without it");
+  assert.ok(logoScale(at(0.2)) > logoScale(at()), "the logo pops");
+  assert.equal(logoScale(at(0.6)), logoScale(at()), "and is back to size");
+  assert.equal(pieces(at(0.1)).length, 16);
+  const spread = (/** @type {number} */ burst) => Math.max(...pieces(at(burst)).map((piece) => Math.abs(Number(piece[2]) - 59)));
+  assert.ok(spread(0.6) > spread(0.1), "the confetti flies out");
+  assert.ok(Number(pieces(at(0.9))[0][1]) < Number(pieces(at(0.1))[0][1]), "and fades");
+  const svg = at(0.3);
+  assert.ok(svg.indexOf("<circle") < svg.indexOf(">alpha</text>"), "the ring lies beneath the label");
+  assert.ok(svg.lastIndexOf(" rotate(") > svg.indexOf(">alpha</text>"), "the confetti flies over it");
+  assert.ok(!svg.includes("NaN") && !svg.includes("undefined"));
 });
 
 test("the logo stays clear of the count and of the clock in the corners", () => {

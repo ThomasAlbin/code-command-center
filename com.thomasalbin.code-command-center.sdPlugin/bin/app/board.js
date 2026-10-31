@@ -63,12 +63,16 @@ const REDRAW_MS = 60_000;
 const CLOCK_MS = 5_000;
 /** How long each half of the pulse of a key that has waited too long lasts. */
 const PULSE_MS = 1_000;
-/** One cycle of the holographic shimmer of a working key. */
+/** In Gen-Z mode: one cycle of the holographic shimmer of a key whose session is working or waiting. */
 const HOLO_MS = 4_000;
+/** @type {ReadonlySet<DisplayState>} */
+const SHIMMERING = new Set(["working", "waiting"]);
 /** How much later the shimmer reaches the next key along, so it travels across the deck. */
 const HOLO_STAGGER_MS = 300;
-/** How often a shimmering key is redrawn. */
-const HOLO_FRAME_MS = 100;
+/** In Gen-Z mode: how long a key bursts into confetti when its session finishes. */
+const BURST_MS = 1_600;
+/** How often a key is redrawn while it moves. */
+const FRAME_MS = 100;
 /**
  * The keys of a page appear one event at a time. Sessions are handed out once
  * they have all arrived, so the layout does not depend on the order of events.
@@ -84,8 +88,8 @@ export class Board {
   #assignments = { desktop: new Map(), vscode: new Map(), antigravity: new Map() };
   /** @type {NodeJS.Timeout | undefined} */
   #redraw;
-  /** Whether working keys shimmer, a setting for all keys at once. */
-  #holo = false;
+  /** Whether keys shimmer and burst, a setting for all keys at once. */
+  #genZ = false;
   /** @type {NodeJS.Timeout | undefined} */
   #settle;
 
@@ -134,13 +138,13 @@ export class Board {
   }
 
   /**
-   * The plugin's settings changed: they say whether working keys shimmer.
+   * The plugin's settings changed: they say whether Gen-Z mode is on.
    * @param {unknown} settings
    */
   globalSettingsChanged(settings) {
-    const holo = holoOf(settings);
-    if (holo === this.#holo) return;
-    this.#holo = holo;
+    const genZ = genZOf(settings);
+    if (genZ === this.#genZ) return;
+    this.#genZ = genZ;
     this.render();
   }
 
@@ -241,11 +245,11 @@ export class Board {
         const shown = current ? assigned : undefined;
         if (shown !== undefined) {
           const { memo } = shown.session;
-          if (this.#holo && shown.state === "working") redrawIn = Math.min(redrawIn, HOLO_FRAME_MS);
+          if (this.#genZ && (SHIMMERING.has(shown.state) || burstOf(shown, now) !== undefined)) redrawIn = Math.min(redrawIn, FRAME_MS);
           if (overdue(memo, now)) redrawIn = Math.min(redrawIn, PULSE_MS);
           else if (elapsed(memo, now) !== undefined) redrawIn = Math.min(redrawIn, CLOCK_MS);
         }
-        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#holo, this.#deps.logos));
+        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#genZ, this.#deps.logos));
       }
     }
 
@@ -292,11 +296,11 @@ export class Board {
  * @param {Shown | undefined} shown the key's session, if what is known of it is current
  * @param {number} overflow
  * @param {number} now
- * @param {boolean} holo whether working keys shimmer
+ * @param {boolean} genZ whether keys shimmer and burst
  * @param {import("../core/render.js").Logos} [logos]
  * @returns {string} SVG
  */
-function image(placed, healthy, shown, overflow, now, holo, logos) {
+function image(placed, healthy, shown, overflow, now, genZ, logos) {
   const pinned = placed.pin !== undefined;
   const app = placed.group;
   if (shown !== undefined) {
@@ -314,7 +318,8 @@ function image(placed, healthy, shown, overflow, now, holo, logos) {
         reason: shown.state === "waiting" ? reasonWord(info.waitingFor) : "",
         urgent,
         lit: urgent && Math.floor(now / PULSE_MS) % 2 === 1,
-        holo: holo && shown.state === "working" ? holoPhase(now, placed.key.coordinates) : undefined,
+        holo: genZ && SHIMMERING.has(shown.state) ? holoPhase(now, placed.key.coordinates) : undefined,
+        burst: genZ ? burstOf(shown, now) : undefined,
       },
       logos,
     );
@@ -338,11 +343,26 @@ function holoPhase(now, coordinates) {
 }
 
 /**
- * @param {unknown} settings the plugin's settings, as Stream Deck stores them
- * @returns {boolean} whether working keys shimmer; they do not unless switched on
+ * How far the burst of a key whose session just finished has got. Only a
+ * session seen to finish bursts, not one that was already done when its key
+ * appeared.
+ *
+ * @param {Shown} shown
+ * @param {number} now
+ * @returns {number | undefined} from 0 to 1; nothing once it is over
  */
-function holoOf(settings) {
-  return settings !== null && typeof settings === "object" && /** @type {{ holo?: unknown }} */ (settings).holo === true;
+function burstOf({ session, state }, now) {
+  const since = session.memo.doneSince;
+  if (state !== "done" || since === undefined || now < since || now - since >= BURST_MS) return undefined;
+  return (now - since) / BURST_MS;
+}
+
+/**
+ * @param {unknown} settings the plugin's settings, as Stream Deck stores them
+ * @returns {boolean} whether Gen-Z mode is on; it is not unless switched on
+ */
+function genZOf(settings) {
+  return settings !== null && typeof settings === "object" && /** @type {{ genZ?: unknown }} */ (settings).genZ === true;
 }
 
 /**

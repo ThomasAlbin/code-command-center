@@ -82,7 +82,7 @@ function openPanel(settings) {
     window,
     document: {
       /** @param {string} id */
-      getElementById: (id) => (id === "pin" ? select : id === "holo" ? checkbox : null),
+      getElementById: (id) => (id === "pin" ? select : id === "genz" ? checkbox : null),
       createElement: () => ({ value: "", textContent: "", title: "" }),
     },
     WebSocket: FakeSocket,
@@ -164,16 +164,16 @@ test("a switch made on the device shows up in the open panel", () => {
   assert.equal(panel.select.value, "");
 });
 
-test("the shimmer switch shows the setting all keys share", () => {
+test("the Gen-Z switch shows the setting all keys share", () => {
   const panel = openPanel({});
   assert.equal(panel.checkbox.checked, false);
-  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { holo: true } } });
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { genZ: true } } });
   assert.equal(panel.checkbox.checked, true);
   panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: {} } });
   assert.equal(panel.checkbox.checked, false);
 });
 
-test("switching the shimmer stores it for all keys and keeps the key's own settings apart", () => {
+test("switching Gen-Z mode stores it for all keys and keeps the key's own settings apart", () => {
   const panel = openPanel({ pin: "/work/alpha" });
   panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { later: 1 } } });
   panel.sent.length = 0;
@@ -181,8 +181,8 @@ test("switching the shimmer stores it for all keys and keeps the key's own setti
   panel.tick(true);
   panel.tick(false);
   assert.deepEqual(panel.sent, [
-    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, holo: true } },
-    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, holo: false } },
+    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, genZ: true } },
+    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, genZ: false } },
   ]);
 });
 
@@ -192,7 +192,7 @@ test("messages of the wrong shape are ignored", () => {
   panel.receive({ event: "sendToPropertyInspector", payload: { projects: [null, { id: 5 }, PROJECTS[0]] } });
   assert.deepEqual(panel.labels(), ["Automatic", "alpha"]);
   panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: [true] } });
-  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { holo: "yes" } } });
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { genZ: "yes" } } });
   assert.equal(panel.checkbox.checked, false);
 });
 
