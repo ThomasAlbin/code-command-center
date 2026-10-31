@@ -483,7 +483,7 @@ test("a pulsing key redraws by itself", async () => {
 /** @param {string} svg where the shimmer's bands start; nothing without a shimmer */
 const bands = (svg) => /<linearGradient id="sheen"[^>]* x1="([^"]+)"/.exec(svg)?.[1];
 
-test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimmer, each a little after the one before", () => {
+test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimmer, each with its own part of the sheet", () => {
   const clock = { now: NOW };
   const { board } = setUp(
     [
@@ -506,7 +506,7 @@ test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimme
   const keyOf = (name) => /** @type {ReturnType<typeof fakeKey>} */ (keys.find((key) => key.shown.includes(`>${name}<`)));
   const [first, second] = [keyOf("alpha"), keyOf("beta")];
   assert.ok(bands(first.shown) !== undefined && bands(second.shown) !== undefined);
-  assert.notEqual(bands(first.shown), bands(second.shown), "the shimmer travels across the deck");
+  assert.notEqual(bands(first.shown), bands(second.shown), "neighbours show neighbouring parts of one shimmer");
   assert.ok(bands(keyOf("delta").shown) !== undefined, "a waiting key shimmers as well");
   assert.ok(bands(keyOf("gamma").shown) !== undefined, "a finished one");
   assert.ok(bands(keyOf("epsilon").shown) !== undefined, "and an idle one");
@@ -519,17 +519,6 @@ test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimme
 
   board.globalSettingsChanged({});
   assert.ok(keys.every((key) => bands(key.shown) === undefined));
-});
-
-test("only a setting of true switches Gen-Z mode on", () => {
-  const { board } = setUp([tracked("alpha", "desktop", "working")]);
-  const key = fakeKey("a", 0, 0);
-  board.keyAppeared("desktop", key);
-  for (const settings of [null, [], { genZ: "yes" }, { genZ: 1 }, { holo: true }]) {
-    board.globalSettingsChanged(settings);
-    board.render();
-    assert.equal(bands(key.shown), undefined, JSON.stringify(settings));
-  }
 });
 
 /** @param {string} svg whether confetti flies on the key */

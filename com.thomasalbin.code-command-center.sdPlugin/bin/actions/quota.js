@@ -25,9 +25,10 @@ const FRAME_MS = 100;
 
 /**
  * A key that shows how much of one plan limit is used. A press shows the time
- * the limit resets, for a moment. In Gen-Z mode a highlight runs along the bar,
- * and a full limit tells you to touch grass. The Antigravity CLI has a limit per group of models in each
- * window, so each of its keys shows the group chosen in its settings.
+ * the limit resets, for a moment. In Gen-Z mode the shimmer's glint lights up
+ * the bar as it passes, and a full limit tells you to touch grass. The
+ * Antigravity CLI has a limit per group of models in each window, so each of
+ * its keys shows the group chosen in its settings.
  */
 export class QuotaAction extends SingletonAction {
   /** @override */

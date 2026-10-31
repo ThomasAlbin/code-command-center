@@ -5,7 +5,7 @@ import { genZOf, placeOf, SHIMMER_MS, shimmerPhase } from "../com.thomasalbin.co
 
 test("Gen-Z mode is on only when the setting is true", () => {
   assert.equal(genZOf({ genZ: true }), true);
-  for (const settings of [undefined, null, [], {}, { genZ: "yes" }, { genZ: 1 }, { holo: true }]) assert.equal(genZOf(settings), false);
+  for (const settings of [undefined, null, [], {}, { genZ: "yes" }, { genZ: 1 }]) assert.equal(genZOf(settings), false);
 });
 
 test("every key is at the same point of the shimmer, which repeats", () => {

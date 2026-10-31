@@ -113,7 +113,7 @@ test("a shimmering key keeps its colour, with the shimmer beneath the logo and t
   assert.ok(!shimmering.includes("NaN") && !shimmering.includes("undefined"));
 });
 
-test("a waiting key shimmers in warm colours, so its orange does not turn grey", () => {
+test("each kind of key shimmers in colours that suit it, so none turns grey", () => {
   /** @param {import("../com.thomasalbin.code-command-center.sdPlugin/bin/core/state.js").DisplayState} state */
   const colours = (state) => [...renderSessionKey({ app: "desktop", state, label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.38"/g)].map((match) => match[1]);
   assert.ok(colours("working").includes("#00E5FF"));
