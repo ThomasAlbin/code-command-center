@@ -480,6 +480,96 @@ test("a pulsing key redraws by itself", async () => {
   board.keyDisappeared("a");
 });
 
+/** @param {string} svg where the shimmer's bands start; nothing without a shimmer */
+const bands = (svg) => /<linearGradient id="sheen"[^>]* x1="([^"]+)"/.exec(svg)?.[1];
+
+test("in Gen-Z mode, keys of working, waiting, finished and idle sessions shimmer, each with its own part of the sheet", () => {
+  const clock = { now: NOW };
+  const { board } = setUp(
+    [
+      tracked("alpha", "desktop", "working"),
+      tracked("beta", "desktop", "working"),
+      tracked("gamma", "desktop", "idle", NOW - 10 * MINUTE, {}, { doneSince: NOW - 10 * MINUTE }),
+      tracked("delta", "desktop", "waiting"),
+      tracked("epsilon", "desktop", "idle", NOW - 60 * MINUTE),
+      tracked("zeta", "desktop", "error", NOW - 60 * MINUTE),
+    ],
+    clock,
+  );
+  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2), fakeKey("d", 0, 3), fakeKey("e", 0, 4), fakeKey("f", 1, 0)];
+  for (const key of keys) board.keyAppeared("desktop", key);
+  board.render();
+  assert.ok(keys.every((key) => bands(key.shown) === undefined), "off unless switched on");
+
+  board.globalSettingsChanged({ genZ: true });
+  /** @param {string} name */
+  const keyOf = (name) => /** @type {ReturnType<typeof fakeKey>} */ (keys.find((key) => key.shown.includes(`>${name}<`)));
+  const [first, second] = [keyOf("alpha"), keyOf("beta")];
+  assert.ok(bands(first.shown) !== undefined && bands(second.shown) !== undefined);
+  assert.notEqual(bands(first.shown), bands(second.shown), "neighbours show neighbouring parts of one shimmer");
+  assert.ok(bands(keyOf("delta").shown) !== undefined, "a waiting key shimmers as well");
+  assert.ok(bands(keyOf("gamma").shown) !== undefined, "a finished one");
+  assert.ok(bands(keyOf("epsilon").shown) !== undefined, "and an idle one");
+  assert.equal(bands(keyOf("zeta").shown), undefined, "a failed key stays plain");
+
+  const before = first.shown;
+  clock.now += 100;
+  board.render();
+  assert.notEqual(first.shown, before, "the next frame");
+
+  board.globalSettingsChanged({});
+  assert.ok(keys.every((key) => bands(key.shown) === undefined));
+});
+
+/** @param {string} svg whether confetti flies on the key */
+const bursting = (svg) => svg.includes('fill-opacity="') && svg.includes(" rotate(");
+
+test("in Gen-Z mode, a key bursts into confetti when its session finishes, and only then", () => {
+  const clock = { now: NOW };
+  const working = tracked("alpha", "desktop", "working");
+  const { board, monitor } = setUp([working], clock);
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.globalSettingsChanged({ genZ: true });
+
+  // What the monitor records when the session goes quiet.
+  clock.now += 5_000;
+  monitor.sessions = [{ ...working, memo: { base: "idle", lastChange: clock.now, doneSince: clock.now } }];
+  monitor.emit();
+  assert.ok(key.shown.includes("#2EA043") && bursting(key.shown), "green, with confetti");
+  clock.now += 800;
+  board.render();
+  assert.ok(bursting(key.shown), "still flying");
+  clock.now += 900;
+  board.render();
+  assert.ok(key.shown.includes("#2EA043") && !bursting(key.shown), "then the key settles");
+
+  const late = fakeKey("b", 1, 0);
+  board.keyAppeared("desktop", late);
+  board.render();
+  assert.ok(!bursting(late.shown), "a key that appears later does not burst");
+});
+
+test("without Gen-Z mode a finishing session only turns green", () => {
+  const { board } = setUp([tracked("alpha", "desktop", "idle", NOW, {}, { doneSince: NOW })]);
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.render();
+  assert.ok(key.shown.includes("#2EA043") && !bursting(key.shown));
+});
+
+test("a shimmering key redraws by itself", async () => {
+  const { board } = setUp([tracked("alpha", "desktop", "working")], { get now() { return Date.now(); } });
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.globalSettingsChanged({ genZ: true });
+  const drawn = key.images.length;
+
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  assert.ok(key.images.length >= drawn + 2, "frames arrive without any event");
+  board.keyDisappeared("a");
+});
+
 // --- the Antigravity CLI ---
 
 test("Antigravity CLI keys show the CLI's sessions, and only those", () => {

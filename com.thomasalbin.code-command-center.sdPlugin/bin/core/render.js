@@ -7,6 +7,21 @@ import { LOGOS } from "./logos.js";
 /** @typedef {import("./logos.js").Logo} Logo */
 /** @typedef {Readonly<Record<App, Logo>>} Logos */
 /** @typedef {import("./state.js").DisplayState} DisplayState */
+/**
+ * @typedef {object} SheenLook
+ * @property {ReadonlyArray<string>} colours of the bands, in the order they drift past
+ * @property {number} opacity of the bands
+ * @property {number} glintOpacity
+ * @property {{ bg: string, fg: string }} [key] the key's colours beneath the shimmer, where they are not those of its state
+ */
+/**
+ * Where a key sits on its deck.
+ * @typedef {object} DeckPlace
+ * @property {number} column
+ * @property {number} row
+ * @property {number} columns how many the deck has
+ * @property {number} rows
+ */
 
 const FONT = "Helvetica, Arial, sans-serif";
 const CENTRE = KEY_SIZE / 2;
@@ -35,6 +50,67 @@ const EMPTY = { bg: "#0D1117", fg: "#484F58" };
 /** A pinned key whose project has no session: readable, but clearly not running. */
 const NOT_RUNNING = { bg: "#0D1117", fg: "#8B949E" };
 const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D1D9", track: "#30363D" };
+/**
+ * The holographic shimmer of a working, waiting, finished or idle key: bands
+ * of colour that drift across it, and a glint that sweeps over it once in each
+ * cycle, the next one starting as the last one leaves the deck. It lies between the key's colour and what is drawn on it, so the logo
+ * and the label stay sharp.
+ *
+ * The keys of a deck draw one shimmer between them, as if the deck were one
+ * sheet of foil: each key shows the part of it that lies where the key sits,
+ * so the bands run on from key to key and one glint sweeps across the deck.
+ */
+const SHEEN = {
+  /** The direction the bands drift in, in degrees down from the horizontal. */
+  angle: 30,
+  /** The distance after which the bands repeat; they drift by that much in one cycle. */
+  period: 96,
+  /** Half the width of the glint. */
+  glint: 32,
+  /**
+   * How the shimmer looks on each kind of key. Cool colours on a working key's
+   * blue; warm ones on a waiting key's orange and light ones on a finished
+   * key's green, where cool ones turn grey or brown. An idle key's own dark
+   * green turns any shimmer grey or olive, so it takes a finished key's green
+   * and shimmer, with dark green bands where that has lime, to tell the two apart.
+   * @type {{ working: SheenLook } & Partial<Record<DisplayState, SheenLook>>}
+   */
+  looks: {
+    working: { colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"], opacity: 0.38, glintOpacity: 0.65 },
+    waiting: { colours: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"], opacity: 0.38, glintOpacity: 0.65 },
+    done: { colours: ["#FFE45C", "#C6FF5C", "#7DF9FF", "#FFF3A0", "#6BFFB8"], opacity: 0.45, glintOpacity: 0.65 },
+    idle: { colours: ["#FFE45C", "#0E6B30", "#7DF9FF", "#FFF3A0", "#6BFFB8"], opacity: 0.45, glintOpacity: 0.65, key: PALETTE.done },
+  },
+};
+/**
+ * The burst of a key whose session has just finished: the logo pops, a ring
+ * spreads from it, and confetti flies out and falls.
+ */
+const BURST = {
+  colours: ["#FFE45C", "#FF5CC8", "#00E5FF", "#B44DFF", "#FFFFFF", "#6BFFB8"],
+  pieces: 16,
+  /** Where the pieces start, around the logo rather than on it. */
+  start: 16,
+  /** How far the farthest piece flies. */
+  reach: 64,
+  /** How far the pieces have dropped by the end. */
+  fall: 28,
+  /** How much larger the logo grows at the top of its pop. */
+  pop: 0.25,
+  /** The part of the burst the pop takes. */
+  popShare: 0.4,
+};
+/** The glint of the shimmer, as it lights up the filled part of a quota key's bar. */
+const SHINE = { opacity: 0.75 };
+/** The grass along the bottom of a quota key whose limit is full, swaying. */
+const GRASS = {
+  colours: ["#2EA043", "#3FB950", "#56D364"],
+  blades: 13,
+  /** Half the width of a blade at its root. */
+  root: 3.5,
+  /** How far the tip of a blade sways to either side. */
+  sway: 3.5,
+};
 
 /**
  * @typedef {object} SessionKeyView
@@ -47,6 +123,9 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
  * @property {string} [reason] what a waiting session waits for, in one word
  * @property {boolean} [urgent] the session has waited long without being looked at
  * @property {boolean} [lit] the bright half of an urgent key's pulse
+ * @property {number} [holo] where the holographic shimmer is in its cycle, from 0 to 1; no shimmer without it
+ * @property {DeckPlace} [place] where the key sits on its deck, so its shimmer joins those of the keys around it
+ * @property {number} [burst] how far the burst of a session that just finished has got, from 0 to 1; no burst without it
  */
 
 /**
@@ -57,24 +136,32 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
  * @param {Logos} [logos] the logo of each app; the plugin's own marks unless the apps' logos were found
  * @returns {string} SVG
  */
-export function renderSessionKey({ app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false }, logos = LOGOS) {
-  const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : PALETTE[state];
+export function renderSessionKey(
+  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo, place, burst },
+  logos = LOGOS,
+) {
+  const look = holo === undefined ? undefined : (SHEEN.looks[state] ?? SHEEN.looks.working);
+  const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : (look?.key ?? PALETTE[state]);
   const fitted = fitLabel(label);
   // The reason takes the last line, in lighter type, so the label moves up, and one of two lines shrinks.
   const name =
     reason === ""
       ? labelText(fitted, fg)
       : labelText(fitted, fg, fitted.lines.length === 2 ? 90 : 94, SMALLEST) + text(CENTRE, 131, SMALLEST, fg, "middle", reason, 400);
+  const pop = burst === undefined ? 1 : 1 + BURST.pop * Math.sin(Math.PI * Math.min(1, burst / BURST.popShare));
   return frame(
     bg,
-    // Without a listing there is no session to show, whichever app the key is for.
-    (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size, fg)) +
+    (holo === undefined || look === undefined ? "" : sheen(holo, look, place)) +
+      (burst === undefined ? "" : spreadingRing(burst)) +
+      // Without a listing there is no session to show, whichever app the key is for.
+      (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size * pop, fg)) +
       name +
       // The pin and the count share the left corner: only an automatic key carries a count.
       (overflow > 0 ? text(CORNER, 26, 22, fg, "start", `+${overflow}`) : "") +
       (time === "" ? "" : text(KEY_SIZE - CORNER, 26, 22, fg, "end", time)) +
       (pinned ? pin(fg) : "") +
-      (urgent ? ring(lit ? PALETTE.waiting.bg : RING) : ""),
+      (urgent ? ring(lit ? PALETTE.waiting.bg : RING) : "") +
+      (burst === undefined ? "" : confetti(burst)),
   );
 }
 
@@ -103,6 +190,9 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @property {string} footer time until the reset, or why there is none
  * @property {number} [even] the percent that even use would have reached by now, drawn as a tick on the bar
  * @property {boolean} [warn] the footer is a warning
+ * @property {number} [grass] the limit is full: the key tells you to touch grass, with grass that sways, here from 0 to 1 in its cycle
+ * @property {number} [shine] where the shimmer is in its cycle, from 0 to 1: its glint lights up the bar as it passes; no highlight without it
+ * @property {DeckPlace} [place] where the key sits on its deck, so the glint passes it in step with the keys around it
  */
 
 /**
@@ -110,18 +200,31 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @param {QuotaKeyView} view
  * @returns {string} SVG
  */
-export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false }) {
+export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass, shine, place }) {
   const used = percent === undefined ? 0 : Math.min(100, Math.max(0, percent));
   const tone = used >= 90 ? PALETTE.error.bg : used >= 70 ? PALETTE.waiting.bg : PALETTE.done.bg;
   const middle = value ?? (percent === undefined ? "–" : `${Math.round(used)}%`);
   const footerSize = textWidth(footer, SMALLEST) > LINE_WIDTH ? 18 : SMALLEST;
+  const heading =
+    text(14, 32, 24, QUOTA.title, "start", title) +
+    (tag === "" ? "" : text(KEY_SIZE - 14, 30, textWidth(tag, 18) > 76 ? 15 : 18, QUOTA.title, "end", tag));
+  if (grass !== undefined) {
+    return frame(
+      QUOTA.bg,
+      heading +
+        text(CENTRE, 64, 30, QUOTA.value, "middle", "touch") +
+        text(CENTRE, 92, 30, QUOTA.value, "middle", "grass") +
+        text(CENTRE, 114, footerSize, QUOTA.footer, "middle", footer) +
+        blades(grass),
+    );
+  }
   return frame(
     QUOTA.bg,
-    text(14, 32, 24, QUOTA.title, "start", title) +
-      (tag === "" ? "" : text(KEY_SIZE - 14, 30, textWidth(tag, 18) > 76 ? 15 : 18, QUOTA.title, "end", tag)) +
+    heading +
       text(CENTRE, 84, 44, QUOTA.value, "middle", middle) +
       `<rect x="12" y="96" width="120" height="10" rx="5" fill="${QUOTA.track}"/>` +
       (used > 0 ? `<rect x="12" y="96" width="${Math.max(10, Math.round(used * 1.2))}" height="10" rx="5" fill="${tone}"/>` : "") +
+      (used > 0 && shine !== undefined ? barShine(Math.max(10, Math.round(used * 1.2)), shine, place) : "") +
       (even === undefined ? "" : paceMark(even)) +
       text(CENTRE, 132, footerSize, warn ? PALETTE.waiting.bg : QUOTA.footer, "middle", footer),
   );
@@ -144,6 +247,187 @@ export function renderEmptyKey(caption, app, logos = LOGOS) {
  */
 export function svgToDataUri(svg) {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * The distance from one key to the next on a deck, gap included, in the units
+ * of a key image. Stream Deck says where a key sits but not how wide the gaps
+ * between keys are; this is the spacing of a Stream Deck MK.2.
+ */
+const PITCH = 187;
+const DRIFT = (SHEEN.angle * Math.PI) / 180;
+/** The direction of the drift, as a step along each axis. */
+const [DX, DY] = [Math.cos(DRIFT), Math.sin(DRIFT)];
+
+/**
+ * A key on its own, as in a multi-action, is a deck of one.
+ * @param {DeckPlace} [place]
+ * @returns {{ start: number, reach: number }} how far along the drift the key's corner lies, and how far the deck reaches
+ */
+function onDeck(place = { column: 0, row: 0, columns: 1, rows: 1 }) {
+  return {
+    start: place.column * PITCH * DX + place.row * PITCH * DY,
+    reach: ((place.columns - 1) * PITCH + KEY_SIZE) * DX + ((place.rows - 1) * PITCH + KEY_SIZE) * DY,
+  };
+}
+
+/**
+ * @param {number} from distance along the drift, from the key's corner
+ * @param {number} to
+ * @returns {string} the attributes of a gradient that runs between them
+ */
+function along(from, to) {
+  return `x1="${round(from * DX)}" y1="${round(from * DY)}" x2="${round(to * DX)}" y2="${round(to * DY)}"`;
+}
+
+/**
+ * Where the glint is. It sweeps across the deck over the whole cycle: as it
+ * leaves the bottom right corner, the next one enters at the top left.
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {DeckPlace} [place]
+ * @returns {number | undefined} its centre's distance along the drift from the key's corner; nothing while it is off this key
+ */
+function glintOn(phase, place) {
+  const { glint } = SHEEN;
+  const { start, reach } = onDeck(place);
+  const centre = -glint + phase * (reach + 2 * glint) - start;
+  return centre < -glint || centre > KEY_SIZE * (DX + DY) + glint ? undefined : centre;
+}
+
+/**
+ * @param {string} id
+ * @param {number} centre distance along the drift, from the key's corner
+ * @param {number} opacity at its brightest
+ * @returns {string} a gradient that is a band of white light across the key, there
+ */
+function glintGradient(id, centre, opacity) {
+  return (
+    `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" ${along(centre - SHEEN.glint, centre + SHEEN.glint)}>` +
+    `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${opacity}"/>` +
+    `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`
+  );
+}
+
+/**
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {SheenLook} look the bands' colours, in the order they drift past, and how strongly they and the glint show
+ * @param {DeckPlace} [place] where the key sits on its deck
+ * @returns {string} SVG, to lie over the key's colour
+ */
+function sheen(phase, { colours, opacity, glintOpacity }, place) {
+  const { period } = SHEEN;
+  // The bands lie where they would on one sheet across the deck. Four periods
+  // cover the key wherever they are; one period on, the pattern is the same again.
+  const first = ((((phase * period - onDeck(place).start) % period) + period) % period) - period;
+  const count = 4 * colours.length;
+  const stops = Array.from(
+    { length: count + 1 },
+    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${opacity}"/>`,
+  ).join("");
+  let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(first, first + 4 * period)}>${stops}</linearGradient>`;
+  let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
+
+  const centre = glintOn(phase, place);
+  if (centre !== undefined) {
+    defs += glintGradient("glint", centre, glintOpacity);
+    body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
+  }
+  return `<defs>${defs}</defs>${body}`;
+}
+
+/**
+ * The glint, where it crosses the filled part of a quota key's bar. It is the
+ * bar's own shape, lit by the same band of light that sweeps over the session
+ * keys, so it never spills past the bar's end.
+ *
+ * @param {number} filled width of the filled part
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {DeckPlace} [place]
+ * @returns {string} SVG; nothing while the glint is not on this key
+ */
+function barShine(filled, phase, place) {
+  const centre = glintOn(phase, place);
+  if (centre === undefined) return "";
+  return (
+    `<defs>${glintGradient("shine", centre, SHINE.opacity)}</defs>` +
+    `<rect x="12" y="96" width="${filled}" height="10" rx="5" fill="url(#shine)"/>`
+  );
+}
+
+/**
+ * Blades of grass along the bottom of a key, each swaying a little after its neighbour.
+ * @param {number} phase from 0 to 1 in the sway's cycle
+ * @returns {string} SVG
+ */
+function blades(phase) {
+  const { blades: count, root, colours } = GRASS;
+  const gap = KEY_SIZE / count;
+  return Array.from({ length: count }, (_, index) => {
+    const x = gap * (index + 0.5);
+    const height = 15 + ((index * 5) % 4) * 3;
+    const tip = x + GRASS.sway * Math.sin(2 * Math.PI * (phase + index * 0.09));
+    const middle = KEY_SIZE - height / 2;
+    return (
+      `<path fill="${colours[index % colours.length]}" d="M ${round(x - root)} ${KEY_SIZE} ` +
+      `Q ${round(x - 1)} ${round(middle)} ${round(tip)} ${KEY_SIZE - height} ` +
+      `Q ${round(x + 1)} ${round(middle)} ${round(x + root)} ${KEY_SIZE} Z"/>`
+    );
+  }).join("");
+}
+
+/**
+ * A ring that spreads from the logo and fades, beneath the logo and the label.
+ * @param {number} progress from 0 to 1
+ * @returns {string} SVG
+ */
+function spreadingRing(progress) {
+  const out = easeOut(progress);
+  return (
+    `<circle cx="${LOGO.cx}" cy="${LOGO.cy}" r="${round(12 + 70 * out)}" fill="none" stroke="#FFFFFF" ` +
+    `stroke-width="${round(6 - 5 * out)}" stroke-opacity="${round(0.7 * (1 - progress), 2)}"/>`
+  );
+}
+
+/**
+ * Pieces of confetti that fly out from the logo, tumble, fall and fade, over everything else.
+ * @param {number} progress from 0 to 1
+ * @returns {string} SVG
+ */
+function confetti(progress) {
+  const { pieces, colours } = BURST;
+  const out = easeOut(progress);
+  const opacity = round(1 - progress * progress, 2);
+  return Array.from({ length: pieces }, (_, index) => {
+    // Spread around the logo, with some pieces flying farther than others.
+    const angle = (index / pieces) * 2 * Math.PI + (index % 3) * 0.35;
+    const reach = BURST.reach * (0.55 + 0.45 * (((index * 7) % 5) / 4));
+    const distance = BURST.start + reach * out;
+    const x = LOGO.cx + Math.cos(angle) * distance;
+    const y = LOGO.cy + Math.sin(angle) * distance + BURST.fall * progress * progress;
+    const turn = ((index % 2 === 0 ? 1 : -1) * 360 * progress + index * 40) % 360;
+    return (
+      `<rect x="-4" y="-2" width="8" height="4" rx="1" fill="${colours[index % colours.length]}" fill-opacity="${opacity}" ` +
+      `transform="translate(${round(x)} ${round(y)}) rotate(${round(turn)})"/>`
+    );
+  }).join("");
+}
+
+/**
+ * @param {number} progress from 0 to 1
+ * @returns {number} fast at first, slowing to a stop
+ */
+function easeOut(progress) {
+  return 1 - (1 - progress) ** 3;
+}
+
+/**
+ * @param {number} value
+ * @param {number} [digits]
+ * @returns {string} without trailing zeros, so the same shimmer is always the same text
+ */
+function round(value, digits = 1) {
+  return String(Number(value.toFixed(digits)));
 }
 
 /**

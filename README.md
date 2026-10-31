@@ -43,6 +43,7 @@ Each key is labelled with the session's project folder and carries a mark for it
 - **Clock:** a working or waiting key has a clock in its top right corner, from the first full minute on. On a blue key it is how long the turn has been running; a permission prompt in the middle does not restart it. On an orange key it is how long the session has waited.
 - **Reason:** the last line of an orange key says what the session waits for, in the first word Claude Code uses for it: `permission`, `dialog`, `input`. An Antigravity CLI key only ever waits for `permission`: a tool call that needs your approval.
 - **Pulse:** after five minutes of waiting the key gets a white frame and pulses once a second. Pressing the key stops the pulse; the clock keeps counting.
+- **Gen-Z mode:** the keys can shimmer, burst and more; see [Gen-Z mode](#gen-z-mode).
 - **Automatic keys** fill with sessions in reading order: waiting first, then working, then the most recently started. A session keeps its key for as long as it runs. A `+2` in the top left corner of the last key counts sessions that have no key.
 - **Reserved keys** always show one project and carry a small pin. Reserve a key in either of two ways:
   - Select the key in the Stream Deck app and pick a project under **Session**.
@@ -64,6 +65,23 @@ The quota keys need the [mod](#2-the-mod-for-the-quota-keys). Without it they sh
 **Antigravity quota keys** work the same way, for the limits of the Antigravity CLI. The CLI has a limit for each group of models in each window, such as one for Gemini and one for third-party models, and a model can have a limit of its own. So each key shows one group, named in its top right corner: `Gemini`, `3rd party`, or the model's name, such as `Argon`. Choose the group under **Limit of** in the key's settings in the Stream Deck app; until you do, it is Gemini. The list offers the groups the CLI has reported, and each key can show a different one.
 
 A new reading arrives each time an Antigravity CLI session changes state. The limits belong to your account, so every session writes the same reading and the newest wins. These keys need the [bridge](#4-the-bridge-for-the-antigravity-cli-keys); without it they show `no data`.
+
+### Gen-Z mode
+
+Tick **Gen-Z mode** under **Effects** in the settings of any session key in the Stream Deck app, and the keys come alive. The setting holds for all keys at once, session keys and quota keys alike, and is off until you switch it on.
+
+| Key | In Gen-Z mode |
+|---|---|
+| Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and a glint sweeps over it as it crosses the deck |
+| Waiting (orange) | Shimmers the same way, in warm colours |
+| Finished (bright green) | Bursts as it turns green: for 1.6 seconds the logo pops, a ring spreads from it and confetti flies out. Then it shimmers in light colours, gold, lime and aqua |
+| Idle (dim green) | Takes a finished key's bright green and shimmer, with dark green bands where that has lime, so the two stay apart |
+| Quota | The glint lights up the bar as it passes the key |
+| Quota, limit full | Says `touch grass` in place of the percent and the bar, with how long until the limit resets, such as `for 2h 13m`, and grass sways along its bottom |
+
+All keys of a deck draw one shimmer between them, as if the deck were one sheet of foil: each key shows the part that lies where it sits, so the bands run on from key to key and a single glint sweeps across the whole deck, from the top left corner to the bottom right, in ten seconds. As it leaves, the next one enters. Stream Deck tells the plugin where each key sits and how many keys the deck has, but not how wide the gaps between keys are; the plugin assumes the spacing of a Stream Deck MK.2. Keys of other plugins and empty places do not shimmer, so the sheet shows through the plugin's keys only. Each kind of key has colours that suit it. An idle key's own dark green would turn any shimmer grey, which is why it borrows a finished key's green. The shimmer lies beneath the logo and the label, and only the confetti flies over them. A finished key bursts only when its session is seen to finish, not when a page with a key that is already green comes into view. A press works as always; on a full quota key it still shows the time the limit resets.
+
+While a key moves, the plugin redraws it ten times a second. With Gen-Z mode off, keys are redrawn as before.
 
 ## Requirements
 
@@ -245,7 +263,7 @@ What follows is true of the plugin's own code. The plugin also starts other prog
   Inside a container two things are ever started: Claude Code at the exact place VS Code's extension installs it, with `agents --json`, and `/bin/cat` on a reading of the mod, whose place is fixed by pattern: `<home>/.code-command-center/usage/<session>.json`. Both run as the user whose home folder holds that Claude Code, `/root` or `/home/<name>`, because Claude Code keeps each user's sessions apart. Where the folder is elsewhere, or its name is no user of the container, they run as the container's own user.
 - **Files read:** its own folder `~/.code-command-center/`, which holds what the mod and the bridge write, the mod's readings inside Dev Containers, the names of the folders that hold Claude Code's versions, VS Code's `storage.json` (only to find a Dev Container window's address, and the window that an Antigravity CLI session's terminal is in), and the logo files of the Claude Code extension and of VS Code (see [Logos](#logos)). In `~/.code-command-center/antigravity/` it reads only regular files with the bridge's names, and never follows a link.
 - **Files written:** its log. It deletes usage files older than eight days from `~/.code-command-center/usage/`, creates `~/.code-command-center/antigravity/` for the bridge, and deletes the file there of an Antigravity CLI process that has ended.
-- **Stored settings:** a reserved key stores its project's folder path in your Stream Deck profile, and an Antigravity quota key the group of models it shows.
+- **Stored settings:** a reserved key stores its project's folder path in your Stream Deck profile, and an Antigravity quota key the group of models it shows. The plugin stores one setting of its own there: whether Gen-Z mode is on.
 - **Third-party code:** Elgato's Stream Deck SDK and its four dependencies at run time, and TypeScript with Node's type definitions for checking. Versions are pinned and npm install scripts are disabled.
 - **Log:** what the plugin writes to `com.thomasalbin.code-command-center.sdPlugin/logs/` is a handful of fixed messages and the version of Claude Code, never a session name or a path. Elgato's SDK can add messages of its own to the same log.
 

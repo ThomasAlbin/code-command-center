@@ -103,6 +103,84 @@ test("a key that has no listing to show carries a question mark, whichever app i
   assert.ok(!svg.includes(LOGOS.vscode.d));
 });
 
+test("a shimmering key keeps its colour, with the shimmer beneath the logo and the label", () => {
+  const plain = renderSessionKey({ app: "desktop", state: "working", label: "alpha" });
+  const shimmering = renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: 0.2 });
+  assert.ok(!plain.includes("url(#sheen)"));
+  assert.equal(/<rect[^>]*fill="(#[0-9A-F]{6})"/.exec(shimmering)?.[1], "#1F6FEB");
+  const sheen = shimmering.indexOf("url(#sheen)");
+  assert.ok(sheen > 0 && sheen < shimmering.indexOf(LOGOS.desktop.d) && sheen < shimmering.indexOf(">alpha</text>"));
+  assert.ok(!shimmering.includes("NaN") && !shimmering.includes("undefined"));
+});
+
+test("each kind of key shimmers in colours that suit it, so none turns grey", () => {
+  /** @param {import("../com.thomasalbin.code-command-center.sdPlugin/bin/core/state.js").DisplayState} state */
+  const colours = (state) => [...renderSessionKey({ app: "desktop", state, label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.38"/g)].map((match) => match[1]);
+  assert.ok(colours("working").includes("#00E5FF"));
+  assert.ok(!colours("waiting").includes("#00E5FF"));
+  assert.ok(colours("waiting").includes("#FFE45C"));
+  const done = [...renderSessionKey({ app: "desktop", state: "done", label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.45"/g)].map((match) => match[1]);
+  assert.ok(done.includes("#C6FF5C") && !done.includes("#B44DFF"), "a finished key in light colours, no violet");
+  const idle = renderSessionKey({ app: "desktop", state: "idle", label: "alpha", holo: 0.2 });
+  const idleBands = [.../<linearGradient id="sheen".*?<\/linearGradient>/.exec(idle)?.[0].matchAll(/stop-color="(#[0-9A-F]{6})"/g) ?? []].map((match) => match[1]);
+  assert.ok(idle.includes('fill="#2EA043"') && idle.includes('fill="#FFFFFF"'), "an idle key takes a finished key's green, since a shimmer on its own dark green looks grey");
+  assert.ok(idleBands.includes("#0E6B30") && !idleBands.includes("#C6FF5C"), "with dark green bands where that has lime, to tell the two apart");
+  assert.ok(renderSessionKey({ app: "desktop", state: "idle", label: "alpha" }).includes('fill="#12361F"'), "without the shimmer it stays dim");
+  const pulsing = renderSessionKey({ app: "desktop", state: "waiting", label: "alpha", urgent: true, lit: true, holo: 0.2 });
+  assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");
+});
+
+test("the keys of a deck draw one shimmer: the bands run on from key to key, and one glint sweeps across", () => {
+  /**
+   * @param {number} column
+   * @param {number} row
+   * @param {number} holo
+   */
+  const key = (column, row, holo) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo, place: { column, row, columns: 5, rows: 3 } });
+  const [dx, pitch, period] = [Math.cos(Math.PI / 6), 187, 96];
+  /** @param {string} svg where the bands begin on the deck, within one period */
+  const bandsOnDeck = (svg) => Number(/<linearGradient id="sheen"[^>]* x1="([-\d.]+)"/.exec(svg)?.[1]) / dx;
+  for (const column of [1, 2, 4]) {
+    const shift = (bandsOnDeck(key(column, 0, 0.3)) + column * pitch * dx - bandsOnDeck(key(0, 0, 0.3))) % period;
+    assert.ok(Math.min(Math.abs(shift), period - Math.abs(shift)) < 0.5, `the bands of column ${column} continue those of column 0`);
+  }
+  /** @param {string} svg */
+  const glinting = (svg) => svg.includes("url(#glint)");
+  assert.ok(glinting(key(0, 0, 0.02)) && !glinting(key(4, 2, 0.02)), "the glint starts in the top left corner of the deck");
+  assert.ok(!glinting(key(0, 0, 0.85)) && glinting(key(4, 2, 0.85)), "and ends in the bottom right");
+  assert.ok(glinting(key(4, 2, 0.99)) && glinting(key(0, 0, 0.01)), "as it leaves, the next one enters");
+  assert.ok(!glinting(key(0, 0, 0.99)), "only one at a time");
+});
+
+test("on a key of its own, the glint crosses it over the whole cycle, and the bands keep drifting", () => {
+  /** @param {number} phase */
+  const at = (phase) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: phase });
+  for (const phase of [0, 0.5, 0.95]) assert.ok(at(phase).includes("url(#glint)"), String(phase));
+  assert.notEqual(at(0.8), at(0.9), "the bands move");
+  assert.equal(at(0.3), at(0.3), "the same moment is the same image, so nothing is sent twice");
+});
+
+test("a key whose session just finished bursts: the logo pops, a ring spreads and confetti flies and fades", () => {
+  /** @param {number} [burst] */
+  const at = (burst) => renderSessionKey({ app: "desktop", state: "done", label: "alpha", burst });
+  /** @param {string} svg */
+  const logoScale = (svg) => Number(/<path transform="translate\([\d.]+ [\d.]+\) scale\(([\d.]+)\)"/.exec(svg)?.[1]);
+  /** @param {string} svg */
+  const pieces = (svg) => [...svg.matchAll(/fill-opacity="([\d.]+)" transform="translate\(([-\d.]+) ([-\d.]+)\)/g)];
+
+  assert.ok(!at().includes("<circle") && pieces(at()).length === 0, "no burst without it");
+  assert.ok(logoScale(at(0.2)) > logoScale(at()), "the logo pops");
+  assert.equal(logoScale(at(0.6)), logoScale(at()), "and is back to size");
+  assert.equal(pieces(at(0.1)).length, 16);
+  const spread = (/** @type {number} */ burst) => Math.max(...pieces(at(burst)).map((piece) => Math.abs(Number(piece[2]) - 59)));
+  assert.ok(spread(0.6) > spread(0.1), "the confetti flies out");
+  assert.ok(Number(pieces(at(0.9))[0][1]) < Number(pieces(at(0.1))[0][1]), "and fades");
+  const svg = at(0.3);
+  assert.ok(svg.indexOf("<circle") < svg.indexOf(">alpha</text>"), "the ring lies beneath the label");
+  assert.ok(svg.lastIndexOf(" rotate(") > svg.indexOf(">alpha</text>"), "the confetti flies over it");
+  assert.ok(!svg.includes("NaN") && !svg.includes("undefined"));
+});
+
 test("the logo stays clear of the count and of the clock in the corners", () => {
   const svg = renderSessionKey({ app: "vscode", state: "working", label: "alpha", overflow: 2, time: "1h05" });
   const match = /<path transform="translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)"/.exec(svg);

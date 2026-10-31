@@ -1,14 +1,19 @@
 // The settings panel of a session key: one dropdown to reserve the key for a
-// project. It talks only to the Stream Deck app, over the local connection
+// project, and a switch for Gen-Z mode, in which keys shimmer and burst, which
+// holds for all keys. It talks only to the Stream Deck app, over the local connection
 // Stream Deck hands every settings panel, and loads nothing from the network.
 
 /** @type {HTMLSelectElement} */
 const select = /** @type {HTMLSelectElement} */ (document.getElementById("pin"));
+/** @type {HTMLInputElement} */
+const genZ = /** @type {HTMLInputElement} */ (document.getElementById("genz"));
 /** @type {WebSocket | undefined} */
 let socket;
 let context = "";
 /** The project this key is reserved for; empty for an automatic key. */
 let pin = "";
+/** The plugin's settings, shared by all keys. */
+let shared = {};
 
 /**
  * Stream Deck calls this once the panel has loaded.
@@ -30,6 +35,7 @@ function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _info, actionI
     send({ event: registerEvent, uuid });
     // Ask the plugin which projects are running.
     send({ event: "sendToPlugin", action: action.action, context, payload: { request: "choices" } });
+    send({ event: "getGlobalSettings", context });
   });
   socket.addEventListener("message", (message) => {
     const data = JSON.parse(String(message.data));
@@ -41,6 +47,9 @@ function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _info, actionI
       pin = pinOf(data.payload?.settings);
       if (![...select.options].some((option) => option.value === pin)) addOption(pin, labelOf(pin), false);
       select.value = pin;
+    } else if (data.event === "didReceiveGlobalSettings" && isObject(data.payload?.settings)) {
+      shared = data.payload.settings;
+      genZ.checked = shared.genZ === true;
     }
   });
 }
@@ -50,6 +59,11 @@ Object.assign(window, { connectElgatoStreamDeckSocket });
 select.addEventListener("change", () => {
   pin = select.value;
   send({ event: "setSettings", context, payload: pin === "" ? {} : { pin } });
+});
+
+genZ.addEventListener("change", () => {
+  shared = { ...shared, genZ: genZ.checked };
+  send({ event: "setGlobalSettings", context, payload: shared });
 });
 
 /**
@@ -86,6 +100,14 @@ function addOption(value, label, running) {
 function pinOf(settings) {
   const value = settings !== null && typeof settings === "object" ? /** @type {{ pin?: unknown }} */ (settings).pin : undefined;
   return typeof value === "string" ? value : "";
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /**

@@ -1,6 +1,7 @@
 // @ts-check
 import { focusTarget } from "../core/focus.js";
 import { folderLabel, formatElapsed, reasonWord } from "../core/format.js";
+import { genZOf, placeOf, shimmerPhase } from "../core/gen-z.js";
 import { projectOf } from "../core/parse-agents.js";
 import { listProjects, nextPin, pinOf } from "../core/pins.js";
 import { renderEmptyKey, renderPinnedEmptyKey, renderSessionKey, svgToDataUri } from "../core/render.js";
@@ -19,7 +20,7 @@ import { displayState, elapsed, overdue, priority } from "../core/state.js";
  * @typedef {object} Key
  * @property {string} id
  * @property {{ column: number, row: number } | undefined} coordinates
- * @property {{ id: string }} device
+ * @property {{ id: string, size?: { columns: number, rows: number } }} device
  * @property {(image?: string) => Promise<void>} setImage
  */
 
@@ -64,6 +65,15 @@ const CLOCK_MS = 5_000;
 /** How long each half of the pulse of a key that has waited too long lasts. */
 const PULSE_MS = 1_000;
 /**
+ * In Gen-Z mode: the keys that shimmer.
+ * @type {ReadonlySet<DisplayState>}
+ */
+const SHIMMERING = new Set(["working", "waiting", "done", "idle"]);
+/** In Gen-Z mode: how long a key bursts into confetti when its session finishes. */
+const BURST_MS = 1_600;
+/** How often a key is redrawn while it moves. */
+const FRAME_MS = 100;
+/**
  * The keys of a page appear one event at a time. Sessions are handed out once
  * they have all arrived, so the layout does not depend on the order of events.
  */
@@ -78,6 +88,8 @@ export class Board {
   #assignments = { desktop: new Map(), vscode: new Map(), antigravity: new Map() };
   /** @type {NodeJS.Timeout | undefined} */
   #redraw;
+  /** Whether keys shimmer and burst, a setting for all keys at once. */
+  #genZ = false;
   /** @type {NodeJS.Timeout | undefined} */
   #settle;
 
@@ -122,6 +134,17 @@ export class Board {
     const placed = this.#keys.get(id);
     if (placed === undefined) return;
     placed.pin = pinOf(settings);
+    this.render();
+  }
+
+  /**
+   * The plugin's settings changed: they say whether Gen-Z mode is on.
+   * @param {unknown} settings
+   */
+  globalSettingsChanged(settings) {
+    const genZ = genZOf(settings);
+    if (genZ === this.#genZ) return;
+    this.#genZ = genZ;
     this.render();
   }
 
@@ -222,10 +245,11 @@ export class Board {
         const shown = current ? assigned : undefined;
         if (shown !== undefined) {
           const { memo } = shown.session;
-          if (overdue(memo, now)) redrawIn = PULSE_MS;
+          if (this.#genZ && (SHIMMERING.has(shown.state) || burstOf(shown, now) !== undefined)) redrawIn = Math.min(redrawIn, FRAME_MS);
+          if (overdue(memo, now)) redrawIn = Math.min(redrawIn, PULSE_MS);
           else if (elapsed(memo, now) !== undefined) redrawIn = Math.min(redrawIn, CLOCK_MS);
         }
-        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#deps.logos));
+        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#genZ, this.#deps.logos));
       }
     }
 
@@ -272,10 +296,11 @@ export class Board {
  * @param {Shown | undefined} shown the key's session, if what is known of it is current
  * @param {number} overflow
  * @param {number} now
+ * @param {boolean} genZ whether keys shimmer and burst
  * @param {import("../core/render.js").Logos} [logos]
  * @returns {string} SVG
  */
-function image(placed, healthy, shown, overflow, now, logos) {
+function image(placed, healthy, shown, overflow, now, genZ, logos) {
   const pinned = placed.pin !== undefined;
   const app = placed.group;
   if (shown !== undefined) {
@@ -293,6 +318,9 @@ function image(placed, healthy, shown, overflow, now, logos) {
         reason: shown.state === "waiting" ? reasonWord(info.waitingFor) : "",
         urgent,
         lit: urgent && Math.floor(now / PULSE_MS) % 2 === 1,
+        holo: genZ && SHIMMERING.has(shown.state) ? shimmerPhase(now) : undefined,
+        place: placeOf(placed.key.coordinates, placed.key.device.size),
+        burst: genZ ? burstOf(shown, now) : undefined,
       },
       logos,
     );
@@ -300,6 +328,21 @@ function image(placed, healthy, shown, overflow, now, logos) {
   if (!healthy) return renderSessionKey({ app, state: "unknown", label: "", pinned }, logos);
   if (placed.pin !== undefined) return renderPinnedEmptyKey(folderLabel(placed.pin), app, logos);
   return renderEmptyKey(CAPTIONS[app], app, logos);
+}
+
+/**
+ * How far the burst of a key whose session just finished has got. Only a
+ * session seen to finish bursts, not one that was already done when its key
+ * appeared.
+ *
+ * @param {Shown} shown
+ * @param {number} now
+ * @returns {number | undefined} from 0 to 1; nothing once it is over
+ */
+function burstOf({ session, state }, now) {
+  const since = session.memo.doneSince;
+  if (state !== "done" || since === undefined || now < since || now - since >= BURST_MS) return undefined;
+  return (now - since) / BURST_MS;
 }
 
 /**

@@ -40,6 +40,19 @@ function openPanel(settings) {
     },
   };
 
+  /** @type {Record<string, () => void>} */
+  const checkboxListeners = {};
+  const checkbox = {
+    checked: false,
+    /**
+     * @param {string} type
+     * @param {() => void} listener
+     */
+    addEventListener(type, listener) {
+      checkboxListeners[type] = listener;
+    },
+  };
+
   /** @type {object[]} */
   const sent = [];
   /** @type {Record<string, (event: { data: string }) => void>} */
@@ -69,7 +82,7 @@ function openPanel(settings) {
     window,
     document: {
       /** @param {string} id */
-      getElementById: (id) => (id === "pin" ? select : null),
+      getElementById: (id) => (id === "pin" ? select : id === "genz" ? checkbox : null),
       createElement: () => ({ value: "", textContent: "", title: "" }),
     },
     WebSocket: FakeSocket,
@@ -82,6 +95,7 @@ function openPanel(settings) {
 
   return {
     select,
+    checkbox,
     sent,
     /** @param {object} message */
     receive: (message) => socketListeners.message({ data: JSON.stringify(message) }),
@@ -91,6 +105,11 @@ function openPanel(settings) {
       selectListeners.change();
     },
     labels: () => options.map((option) => option.textContent),
+    /** @param {boolean} checked */
+    tick(checked) {
+      checkbox.checked = checked;
+      checkboxListeners.change();
+    },
   };
 }
 
@@ -104,6 +123,7 @@ test("the panel registers and asks the plugin for the choices", () => {
   assert.deepEqual(panel.sent, [
     { event: "registerPropertyInspector", uuid: "PANEL" },
     { event: "sendToPlugin", action: "com.thomasalbin.code-command-center.session-desktop", context: "PANEL", payload: { request: "choices" } },
+    { event: "getGlobalSettings", context: "PANEL" },
   ]);
   assert.deepEqual(panel.labels(), ["Automatic"]);
 });
@@ -144,11 +164,36 @@ test("a switch made on the device shows up in the open panel", () => {
   assert.equal(panel.select.value, "");
 });
 
+test("the Gen-Z switch shows the setting all keys share", () => {
+  const panel = openPanel({});
+  assert.equal(panel.checkbox.checked, false);
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { genZ: true } } });
+  assert.equal(panel.checkbox.checked, true);
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: {} } });
+  assert.equal(panel.checkbox.checked, false);
+});
+
+test("switching Gen-Z mode stores it for all keys and keeps the key's own settings apart", () => {
+  const panel = openPanel({ pin: "/work/alpha" });
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { later: 1 } } });
+  panel.sent.length = 0;
+
+  panel.tick(true);
+  panel.tick(false);
+  assert.deepEqual(panel.sent, [
+    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, genZ: true } },
+    { event: "setGlobalSettings", context: "PANEL", payload: { later: 1, genZ: false } },
+  ]);
+});
+
 test("messages of the wrong shape are ignored", () => {
   const panel = openPanel({});
   panel.receive({ event: "sendToPropertyInspector", payload: { projects: "none" } });
   panel.receive({ event: "sendToPropertyInspector", payload: { projects: [null, { id: 5 }, PROJECTS[0]] } });
   assert.deepEqual(panel.labels(), ["Automatic", "alpha"]);
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: [true] } });
+  panel.receive({ event: "didReceiveGlobalSettings", payload: { settings: { genZ: "yes" } } });
+  assert.equal(panel.checkbox.checked, false);
 });
 
 test("the panel loads nothing from the network", () => {
