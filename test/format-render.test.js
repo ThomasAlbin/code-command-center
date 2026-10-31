@@ -122,9 +122,19 @@ test("a waiting key shimmers in warm colours, so its orange does not turn grey",
   const done = [...renderSessionKey({ app: "desktop", state: "done", label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.45"/g)].map((match) => match[1]);
   assert.ok(done.includes("#C6FF5C") && !done.includes("#B44DFF"), "a finished key in light colours, no violet");
   const idle = renderSessionKey({ app: "desktop", state: "idle", label: "alpha", holo: 0.2 });
-  const bands = [...idle.matchAll(/<stop offset="[\d.]+" stop-color="(#[0-9A-F]{6})" stop-opacity="([\d.]+)"\/>/g)].slice(0, 21);
-  assert.ok(bands.some(([, colour]) => colour === "#00FFA3"), "an idle key shimmers in green");
-  assert.ok(bands.some(([, , opacity]) => opacity === "0"), "in ribbons with dark gaps, so it does not look grey");
+  const stops = [.../<linearGradient id="sheen".*?<\/linearGradient>/.exec(idle)?.[0].matchAll(/offset="([\d.]+)" stop-color="(#[0-9A-F]{6})" stop-opacity="([\d.]+)"/g) ?? []]
+    .map(([, offset, colour, opacity]) => ({ offset: Number(offset), colour, opacity: Number(opacity) }));
+  assert.ok(stops.some(({ colour }) => colour === "#00FFA3"), "an idle key shimmers in green");
+  const gaps = stops.map((stop, index) => (stop.opacity === 0 ? index : -1)).filter((index) => index >= 0);
+  assert.equal(gaps.length, 8, "in ribbons with dark gaps between them, so it does not look grey");
+  for (const index of gaps) {
+    const width = stops[index + 1].offset - stops[index - 1].offset;
+    assert.ok(width <= 0.4 / 20, `the gap at ${stops[index].offset} is thin`);
+    assert.ok(stops[index - 1].opacity > 0 && stops[index + 1].opacity > 0, "and bright right up to it");
+  }
+  const working = renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: 0.2 });
+  const line = (/** @type {string} */ svg) => /<linearGradient id="sheen"[^>]*>/.exec(svg)?.[0];
+  assert.equal(line(idle), line(working), "the same drift as every other key, so all stay in step");
   assert.ok(idle.includes('stop-color="#B0FFD9" stop-opacity="0.35"'), "and a mint glint, as a white one turns grey");
   const pulsing = renderSessionKey({ app: "desktop", state: "waiting", label: "alpha", urgent: true, lit: true, holo: 0.2 });
   assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");

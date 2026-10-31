@@ -75,7 +75,7 @@ Tick **Gen-Z mode** under **Effects** in the settings of any session key in the 
 | Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and every four seconds a glint sweeps over it |
 | Waiting (orange) | Shimmers the same way, in warm colours |
 | Finished (bright green) | Bursts as it turns green: for 1.6 seconds the logo pops, a ring spreads from it and confetti flies out. Then it shimmers in light colours, gold, lime and aqua |
-| Idle (dim green) | Shimmers in ribbons of green and aqua with dark gaps between them, and a mint glint |
+| Idle (dim green) | Shimmers in ribbons of green, aqua and lime with thin dark gaps between them, and a mint glint |
 | Quota | A highlight runs along the bar every three seconds |
 | Quota, limit full | Says `touch grass` in place of the percent and the bar, with how long until the limit resets, such as `for 2h 13m`, and grass sways along its bottom |
 
