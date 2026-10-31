@@ -2,12 +2,15 @@
 import { readFileSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { findDevContainerWindow } from "../core/vscode-windows.js";
+import { findDevContainerWindow, findFolderWindow } from "../core/vscode-windows.js";
 import { codeOpenDevContainer, openApp, openClaudeSession } from "./exec.js";
 
 /** @typedef {import("../core/focus.js").FocusTarget} FocusTarget */
 
-/** Where VS Code records the folders of its windows. Read only to find a Dev Container's address. */
+/**
+ * Where VS Code records the folders of its windows. Read only to find a Dev
+ * Container's address, and the window an Antigravity CLI session's terminal is in.
+ */
 const VS_CODE_STATE = path.join(
   os.homedir(),
   "Library",
@@ -43,8 +46,10 @@ export async function bringToFront(target) {
       }
     }
   }
+  // Only a window that is open is looked for: VS Code would open a new one for any other folder.
+  const wanted = target.folder ?? (target.within === undefined ? undefined : findFolderWindow(readVsCodeState(), target.within));
   // Opening a folder that is gone would only produce an error window.
-  const folder = target.folder !== undefined && isDirectory(target.folder) ? target.folder : undefined;
+  const folder = wanted !== undefined && isDirectory(wanted) ? wanted : undefined;
   await openApp(target.bundleId, folder);
 }
 

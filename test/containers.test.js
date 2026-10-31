@@ -13,6 +13,7 @@ import {
 } from "../com.thomasalbin.code-command-center.sdPlugin/bin/core/parse-docker.js";
 import {
   findDevContainerWindow,
+  findFolderWindow,
   isDevContainerAddress,
 } from "../com.thomasalbin.code-command-center.sdPlugin/bin/core/vscode-windows.js";
 
@@ -102,10 +103,36 @@ test("understands the older address form that encodes the folder itself", () => 
   assert.equal(findDevContainerWindow(`{"folder":"${legacy}"}`, "/Users/dev/projects/app"), legacy);
 });
 
+test("finds the VS Code window that holds a folder, the deepest one if windows are nested", () => {
+  const storage = JSON.stringify({
+    windowsState: {
+      lastActiveWindow: { folder: "file:///Users/dev/projects/other" },
+      openedWindows: [
+        { folder: "file:///Users/dev/projects/app" },
+        { folder: "file:///Users/dev/projects/app/service" },
+        { folder: "file:///Users/dev/My%20Thesis/" },
+        { folder: address("/Users/dev/projects/app", "/workspaces/app") },
+        { workspaceIdentifier: { configURIPath: "file:///Users/dev/team.code-workspace" } },
+      ],
+    },
+  });
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects/app"), "/Users/dev/projects/app");
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects/app/docs"), "/Users/dev/projects/app", "a terminal that moved below its window's folder");
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects/app/service/api"), "/Users/dev/projects/app/service");
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects/other"), "/Users/dev/projects/other", "the last active window counts too");
+  assert.equal(findFolderWindow(storage, "/Users/dev/My Thesis/chapters"), "/Users/dev/My Thesis");
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects/app-old"), undefined, "a name that only starts the same");
+  assert.equal(findFolderWindow(storage, "/Users/dev/projects"), undefined, "a folder above every window");
+});
+
 test("survives a state file that is not what it expects", () => {
   assert.equal(findDevContainerWindow("", "/x"), undefined);
   assert.equal(findDevContainerWindow("not json at all", "/x"), undefined);
   assert.equal(findDevContainerWindow('{"folder":"vscode-remote://dev-container%2Bzz/ws"}', "/x"), undefined);
+  assert.equal(findFolderWindow("", "/x"), undefined);
+  assert.equal(findFolderWindow("null", "/x"), undefined);
+  assert.equal(findFolderWindow('{"windowsState":{"openedWindows":"none","lastActiveWindow":5}}', "/x"), undefined);
+  assert.equal(findFolderWindow('{"windowsState":{"openedWindows":[null,{"folder":7},{"folder":"file://server/share"}]}}', "/x"), undefined);
 });
 
 test("only a Dev Container address is handed to VS Code", () => {
