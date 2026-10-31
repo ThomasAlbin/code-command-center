@@ -1,7 +1,7 @@
 // @ts-check
 import { focusTarget } from "../core/focus.js";
 import { folderLabel, formatElapsed, reasonWord } from "../core/format.js";
-import { genZOf, shimmerPhase } from "../core/gen-z.js";
+import { genZOf, placeOf, shimmerPhase } from "../core/gen-z.js";
 import { projectOf } from "../core/parse-agents.js";
 import { listProjects, nextPin, pinOf } from "../core/pins.js";
 import { renderEmptyKey, renderPinnedEmptyKey, renderSessionKey, svgToDataUri } from "../core/render.js";
@@ -20,7 +20,7 @@ import { displayState, elapsed, overdue, priority } from "../core/state.js";
  * @typedef {object} Key
  * @property {string} id
  * @property {{ column: number, row: number } | undefined} coordinates
- * @property {{ id: string }} device
+ * @property {{ id: string, size?: { columns: number, rows: number } }} device
  * @property {(image?: string) => Promise<void>} setImage
  */
 
@@ -318,7 +318,8 @@ function image(placed, healthy, shown, overflow, now, genZ, logos) {
         reason: shown.state === "waiting" ? reasonWord(info.waitingFor) : "",
         urgent,
         lit: urgent && Math.floor(now / PULSE_MS) % 2 === 1,
-        holo: genZ && SHIMMERING.has(shown.state) ? shimmerPhase(now, placed.key.coordinates) : undefined,
+        holo: genZ && SHIMMERING.has(shown.state) ? shimmerPhase(now) : undefined,
+        place: placeOf(placed.key.coordinates, placed.key.device.size),
         burst: genZ ? burstOf(shown, now) : undefined,
       },
       logos,

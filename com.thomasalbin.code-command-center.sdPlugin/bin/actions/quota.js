@@ -1,7 +1,7 @@
 // @ts-check
 import streamDeck, { SingletonAction } from "@elgato/streamdeck";
 import { groupLabel, groupOf, groupsIn } from "../core/antigravity.js";
-import { genZOf, shimmerPhase } from "../core/gen-z.js";
+import { genZOf, placeOf, shimmerPhase } from "../core/gen-z.js";
 import { renderQuotaKey, svgToDataUri } from "../core/render.js";
 import { describeLimit } from "../core/usage.js";
 
@@ -19,7 +19,7 @@ const FRAME_MS = 100;
  * @property {(image?: string) => Promise<void>} setImage
  * @property {string} [image] what the key shows now
  * @property {string} [group] the group of models whose limit it shows; only for the Antigravity CLI
- * @property {{ column: number, row: number }} [coordinates] where it sits, so its highlight keeps step with the shimmer
+ * @property {import("../core/render.js").DeckPlace} [place] where it sits on its deck, so the glint passes it in step with the other keys
  * @property {ReturnType<typeof setTimeout>} [reset] set while the key shows when its limit resets
  */
 
@@ -73,7 +73,7 @@ export class QuotaAction extends SingletonAction {
     this.#keys.set(action.id, {
       setImage: (image) => action.setImage(image),
       group: this.#groupOf(ev.payload.settings),
-      coordinates: action.coordinates,
+      place: placeOf(action.coordinates, action.device.size),
     });
     this.#usage.acquire();
     this.#draw();
@@ -164,16 +164,16 @@ export class QuotaAction extends SingletonAction {
   #draw() {
     const now = Date.now();
     const grass = this.#genZ ? (now % GRASS_MS) / GRASS_MS : undefined;
+    const shine = this.#genZ ? shimmerPhase(now) : undefined;
     let moving = false;
     for (const key of this.#keys.values()) {
       const kind = key.group === undefined ? this.#window : `${this.#window}:${key.group}`;
       const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind), { reset: key.reset !== undefined, grass });
-      // An empty bar has nothing to shine along. The highlight runs as the shimmer's glint passes this key.
-      const shine = this.#genZ ? shimmerPhase(now, key.coordinates) : undefined;
+      // An empty bar has nothing for the glint to light up.
       const shining = shine !== undefined && view.grass === undefined && (view.percent ?? 0) > 0;
       if (view.grass !== undefined || shining) moving = true;
       const tag = key.group === undefined ? this.#tag : groupLabel(key.group);
-      const svg = renderQuotaKey({ ...view, ...(tag === undefined ? {} : { tag }), ...(shining ? { shine } : {}) });
+      const svg = renderQuotaKey({ ...view, ...(tag === undefined ? {} : { tag }), ...(shining ? { shine, place: key.place } : {}) });
       if (key.image === svg) continue;
       key.image = svg;
       key.setImage(svgToDataUri(svg)).catch(() => {
@@ -182,7 +182,8 @@ export class QuotaAction extends SingletonAction {
     }
     clearTimeout(this.#frame);
     if (!moving) return;
-    this.#frame = setTimeout(() => this.#draw(), FRAME_MS);
+    // On the same beat as the session keys, so neighbours show the same moment of the shimmer.
+    this.#frame = setTimeout(() => this.#draw(), FRAME_MS - (now % FRAME_MS) + 10);
     this.#frame.unref(); // the link to Stream Deck keeps the process alive, not this
   }
 }

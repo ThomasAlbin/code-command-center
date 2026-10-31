@@ -14,6 +14,14 @@ import { LOGOS } from "./logos.js";
  * @property {number} glintOpacity
  * @property {{ bg: string, fg: string }} [key] the key's colours beneath the shimmer, where they are not those of its state
  */
+/**
+ * Where a key sits on its deck.
+ * @typedef {object} DeckPlace
+ * @property {number} column
+ * @property {number} row
+ * @property {number} columns how many the deck has
+ * @property {number} rows
+ */
 
 const FONT = "Helvetica, Arial, sans-serif";
 const CENTRE = KEY_SIZE / 2;
@@ -47,6 +55,10 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
  * of colour that drift across it, and a glint that sweeps over it once in each
  * cycle. It lies between the key's colour and what is drawn on it, so the logo
  * and the label stay sharp.
+ *
+ * The keys of a deck draw one shimmer between them, as if the deck were one
+ * sheet of foil: each key shows the part of it that lies where the key sits,
+ * so the bands run on from key to key and one glint sweeps across the deck.
  */
 const SHEEN = {
   /** The direction the bands drift in, in degrees down from the horizontal. */
@@ -54,9 +66,9 @@ const SHEEN = {
   /** The distance after which the bands repeat; they drift by that much in one cycle. */
   period: 96,
   /** Half the width of the glint. */
-  glint: 26,
-  /** The part of the cycle the glint takes to cross the key. For the rest of it, there is none. */
-  glintShare: 0.55,
+  glint: 32,
+  /** The part of the cycle the glint takes to cross the deck. For the rest of it, there is none. */
+  glintShare: 0.6,
   /**
    * How the shimmer looks on each kind of key. Cool colours on a working key's
    * blue; warm ones on a waiting key's orange and light ones on a finished
@@ -90,12 +102,8 @@ const BURST = {
   /** The part of the burst the pop takes. */
   popShare: 0.4,
 };
-/** A highlight that runs along the filled part of a quota key's bar, as the shimmer's glint crosses the key. */
-const SHINE = {
-  /** Half its width. */
-  width: 14,
-  opacity: 0.75,
-};
+/** The glint of the shimmer, as it lights up the filled part of a quota key's bar. */
+const SHINE = { opacity: 0.75 };
 /** The grass along the bottom of a quota key whose limit is full, swaying. */
 const GRASS = {
   colours: ["#2EA043", "#3FB950", "#56D364"],
@@ -118,6 +126,7 @@ const GRASS = {
  * @property {boolean} [urgent] the session has waited long without being looked at
  * @property {boolean} [lit] the bright half of an urgent key's pulse
  * @property {number} [holo] where the holographic shimmer is in its cycle, from 0 to 1; no shimmer without it
+ * @property {DeckPlace} [place] where the key sits on its deck, so its shimmer joins those of the keys around it
  * @property {number} [burst] how far the burst of a session that just finished has got, from 0 to 1; no burst without it
  */
 
@@ -130,7 +139,7 @@ const GRASS = {
  * @returns {string} SVG
  */
 export function renderSessionKey(
-  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo, burst },
+  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo, place, burst },
   logos = LOGOS,
 ) {
   const look = holo === undefined ? undefined : (SHEEN.looks[state] ?? SHEEN.looks.working);
@@ -144,7 +153,7 @@ export function renderSessionKey(
   const pop = burst === undefined ? 1 : 1 + BURST.pop * Math.sin(Math.PI * Math.min(1, burst / BURST.popShare));
   return frame(
     bg,
-    (holo === undefined || look === undefined ? "" : sheen(holo, look)) +
+    (holo === undefined || look === undefined ? "" : sheen(holo, look, place)) +
       (burst === undefined ? "" : spreadingRing(burst)) +
       // Without a listing there is no session to show, whichever app the key is for.
       (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size * pop, fg)) +
@@ -184,7 +193,8 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @property {number} [even] the percent that even use would have reached by now, drawn as a tick on the bar
  * @property {boolean} [warn] the footer is a warning
  * @property {number} [grass] the limit is full: the key tells you to touch grass, with grass that sways, here from 0 to 1 in its cycle
- * @property {number} [shine] a highlight runs along the bar, here from 0 to 1 in its cycle; no highlight without it
+ * @property {number} [shine] where the shimmer is in its cycle, from 0 to 1: its glint lights up the bar as it passes; no highlight without it
+ * @property {DeckPlace} [place] where the key sits on its deck, so the glint passes it in step with the keys around it
  */
 
 /**
@@ -192,7 +202,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @param {QuotaKeyView} view
  * @returns {string} SVG
  */
-export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass, shine }) {
+export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass, shine, place }) {
   const used = percent === undefined ? 0 : Math.min(100, Math.max(0, percent));
   const tone = used >= 90 ? PALETTE.error.bg : used >= 70 ? PALETTE.waiting.bg : PALETTE.done.bg;
   const middle = value ?? (percent === undefined ? "–" : `${Math.round(used)}%`);
@@ -216,7 +226,7 @@ export function renderQuotaKey({ title, tag = "", percent, value, footer, even, 
       text(CENTRE, 84, 44, QUOTA.value, "middle", middle) +
       `<rect x="12" y="96" width="120" height="10" rx="5" fill="${QUOTA.track}"/>` +
       (used > 0 ? `<rect x="12" y="96" width="${Math.max(10, Math.round(used * 1.2))}" height="10" rx="5" fill="${tone}"/>` : "") +
-      (used > 0 && shine !== undefined ? barShine(Math.max(10, Math.round(used * 1.2)), shine) : "") +
+      (used > 0 && shine !== undefined ? barShine(Math.max(10, Math.round(used * 1.2)), shine, place) : "") +
       (even === undefined ? "" : paceMark(even)) +
       text(CENTRE, 132, footerSize, warn ? PALETTE.waiting.bg : QUOTA.footer, "middle", footer),
   );
@@ -242,65 +252,108 @@ export function svgToDataUri(svg) {
 }
 
 /**
+ * The distance from one key to the next on a deck, gap included, in the units
+ * of a key image. Stream Deck says where a key sits but not how wide the gaps
+ * between keys are; this is the spacing of a Stream Deck MK.2.
+ */
+const PITCH = 187;
+const DRIFT = (SHEEN.angle * Math.PI) / 180;
+/** The direction of the drift, as a step along each axis. */
+const [DX, DY] = [Math.cos(DRIFT), Math.sin(DRIFT)];
+
+/**
+ * A key on its own, as in a multi-action, is a deck of one.
+ * @param {DeckPlace} [place]
+ * @returns {{ start: number, reach: number }} how far along the drift the key's corner lies, and how far the deck reaches
+ */
+function onDeck(place = { column: 0, row: 0, columns: 1, rows: 1 }) {
+  return {
+    start: place.column * PITCH * DX + place.row * PITCH * DY,
+    reach: ((place.columns - 1) * PITCH + KEY_SIZE) * DX + ((place.rows - 1) * PITCH + KEY_SIZE) * DY,
+  };
+}
+
+/**
+ * @param {number} from distance along the drift, from the key's corner
+ * @param {number} to
+ * @returns {string} the attributes of a gradient that runs between them
+ */
+function along(from, to) {
+  return `x1="${round(from * DX)}" y1="${round(from * DY)}" x2="${round(to * DX)}" y2="${round(to * DY)}"`;
+}
+
+/**
+ * Where the glint is, as it sweeps across the deck in the first part of each cycle.
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {DeckPlace} [place]
+ * @returns {number | undefined} its centre's distance along the drift from the key's corner; nothing while it is off this key
+ */
+function glintOn(phase, place) {
+  const crossed = phase / SHEEN.glintShare;
+  if (crossed > 1) return undefined;
+  const { glint } = SHEEN;
+  const { start, reach } = onDeck(place);
+  const centre = -glint + crossed * (reach + 2 * glint) - start;
+  return centre < -glint || centre > KEY_SIZE * (DX + DY) + glint ? undefined : centre;
+}
+
+/**
+ * @param {string} id
+ * @param {number} centre distance along the drift, from the key's corner
+ * @param {number} opacity at its brightest
+ * @returns {string} a gradient that is a band of white light across the key, there
+ */
+function glintGradient(id, centre, opacity) {
+  return (
+    `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" ${along(centre - SHEEN.glint, centre + SHEEN.glint)}>` +
+    `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
+    `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${opacity}"/>` +
+    `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`
+  );
+}
+
+/**
  * @param {number} phase where the shimmer is in its cycle, from 0 to 1
  * @param {SheenLook} look the bands' colours, in the order they drift past, and how strongly they and the glint show
+ * @param {DeckPlace} [place] where the key sits on its deck
  * @returns {string} SVG, to lie over the key's colour
  */
-function sheen(phase, { colours, opacity, glintOpacity }) {
-  const { period, glint } = SHEEN;
-  const angle = (SHEEN.angle * Math.PI) / 180;
-  const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
-  /** How far the key reaches in the direction of the drift. */
-  const reach = KEY_SIZE * (dx + dy);
-  /**
-   * @param {number} from distance along the drift
-   * @param {number} to
-   */
-  const along = (from, to) =>
-    `x1="${round(from * dx)}" y1="${round(from * dy)}" x2="${round(to * dx)}" y2="${round(to * dy)}"`;
-
-  // Four periods cover the key wherever the bands are; one later the pattern is the same again.
-  const start = (phase - 1) * period;
+function sheen(phase, { colours, opacity, glintOpacity }, place) {
+  const { period } = SHEEN;
+  // The bands lie where they would on one sheet across the deck. Four periods
+  // cover the key wherever they are; one period on, the pattern is the same again.
+  const first = ((((phase * period - onDeck(place).start) % period) + period) % period) - period;
   const count = 4 * colours.length;
   const stops = Array.from(
     { length: count + 1 },
     (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${opacity}"/>`,
   ).join("");
-  let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(start, start + 4 * period)}>${stops}</linearGradient>`;
+  let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(first, first + 4 * period)}>${stops}</linearGradient>`;
   let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
 
-  const crossed = phase / SHEEN.glintShare;
-  if (crossed <= 1) {
-    const centre = -glint + crossed * (reach + 2 * glint);
-    defs +=
-      `<linearGradient id="glint" gradientUnits="userSpaceOnUse" ${along(centre - glint, centre + glint)}>` +
-      `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
-      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${glintOpacity}"/>` +
-      `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`;
+  const centre = glintOn(phase, place);
+  if (centre !== undefined) {
+    defs += glintGradient("glint", centre, glintOpacity);
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
 }
 
 /**
- * A highlight running along the filled part of a quota key's bar. It is the
- * bar's own shape, filled with a band of light that moves along it, so it never
- * spills past the bar's end.
+ * The glint, where it crosses the filled part of a quota key's bar. It is the
+ * bar's own shape, lit by the same band of light that sweeps over the session
+ * keys, so it never spills past the bar's end.
  *
  * @param {number} filled width of the filled part
- * @param {number} phase from 0 to 1 in its cycle
- * @returns {string} SVG; nothing while it rests
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @param {DeckPlace} [place]
+ * @returns {string} SVG; nothing while the glint is not on this key
  */
-function barShine(filled, phase) {
-  const run = phase / SHEEN.glintShare;
-  if (run > 1) return "";
-  const { width } = SHINE;
-  const centre = 12 - width + run * (filled + 2 * width);
+function barShine(filled, phase, place) {
+  const centre = glintOn(phase, place);
+  if (centre === undefined) return "";
   return (
-    `<defs><linearGradient id="shine" gradientUnits="userSpaceOnUse" x1="${round(centre - width)}" y1="0" x2="${round(centre + width)}" y2="0">` +
-    `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
-    `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${SHINE.opacity}"/>` +
-    `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>` +
+    `<defs>${glintGradient("shine", centre, SHINE.opacity)}</defs>` +
     `<rect x="12" y="96" width="${filled}" height="10" rx="5" fill="url(#shine)"/>`
   );
 }

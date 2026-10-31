@@ -130,6 +130,27 @@ test("a waiting key shimmers in warm colours, so its orange does not turn grey",
   assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");
 });
 
+test("the keys of a deck draw one shimmer: the bands run on from key to key, and one glint sweeps across", () => {
+  /**
+   * @param {number} column
+   * @param {number} row
+   * @param {number} holo
+   */
+  const key = (column, row, holo) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo, place: { column, row, columns: 5, rows: 3 } });
+  const [dx, pitch, period] = [Math.cos(Math.PI / 6), 187, 96];
+  /** @param {string} svg where the bands begin on the deck, within one period */
+  const bandsOnDeck = (svg) => Number(/<linearGradient id="sheen"[^>]* x1="([-\d.]+)"/.exec(svg)?.[1]) / dx;
+  for (const column of [1, 2, 4]) {
+    const shift = (bandsOnDeck(key(column, 0, 0.3)) + column * pitch * dx - bandsOnDeck(key(0, 0, 0.3))) % period;
+    assert.ok(Math.min(Math.abs(shift), period - Math.abs(shift)) < 0.5, `the bands of column ${column} continue those of column 0`);
+  }
+  /** @param {string} svg */
+  const glinting = (svg) => svg.includes("url(#glint)");
+  assert.ok(glinting(key(0, 0, 0.02)) && !glinting(key(4, 2, 0.02)), "the glint starts in the top left corner of the deck");
+  assert.ok(!glinting(key(0, 0, 0.55)) && glinting(key(4, 2, 0.55)), "and ends in the bottom right");
+  assert.ok(!glinting(key(2, 1, 0.8)), "then rests");
+});
+
 test("the glint crosses a shimmering key early in each cycle, and the bands keep drifting", () => {
   /** @param {number} phase */
   const at = (phase) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: phase });
