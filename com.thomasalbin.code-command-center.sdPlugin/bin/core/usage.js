@@ -99,10 +99,11 @@ export function viewLimit(readings, kind, now) {
  * @param {string} title which limit, such as `5h`
  * @param {LimitView} view
  * @param {import("./pace.js").Pace} [pace] how use compares with time, when that is known
- * @param {{ reset?: boolean }} [options] `reset` to show when the limit resets instead of how much is used
+ * @param {{ reset?: boolean, grass?: number }} [options] `reset` to show when the limit resets instead of how much is
+ *   used; `grass` to tell you to touch grass while the limit is full, with the grass at this point in its sway
  * @returns {import("./render.js").QuotaKeyView}
  */
-export function describeLimit(title, view, pace, { reset = false } = {}) {
+export function describeLimit(title, view, pace, { reset = false, grass } = {}) {
   if (view.status === "none") return { title, footer: "no data" };
   if (view.status === "reset") return { title, percent: 0, footer: "reset" };
   const shown = pace === undefined ? { title, percent: view.percent } : { title, percent: view.percent, even: pace.even };
@@ -110,6 +111,10 @@ export function describeLimit(title, view, pace, { reset = false } = {}) {
     // A time of day with its day does not fit on one line, so the time takes the middle and the day goes below.
     const today = view.resetsInMs < SAME_DAY_MS;
     return { ...shown, value: formatClock(view.resetsAt), footer: today ? "resets" : `resets ${formatDay(view.resetsAt)}` };
+  }
+  // Nothing more can be done until the limit resets.
+  if (grass !== undefined && view.percent >= 100) {
+    return { title, grass, footer: view.resetsInMs === undefined ? "" : `for ${formatCountdown(view.resetsInMs)}` };
   }
   // An old reading may be out of date, so say when it was taken instead of counting down.
   if (view.stale) return { ...shown, footer: `as of ${formatClock(view.writtenAt)}` };

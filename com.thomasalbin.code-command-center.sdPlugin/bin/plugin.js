@@ -121,10 +121,13 @@ process.on("unhandledRejection", () => logger.error("An operation failed unexpec
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-desktop`, "desktop", board));
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-vscode`, "vscode", board));
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-antigravity`, "antigravity", board));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage, { tag: "Claude" }));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage, { tag: "Claude" }));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-5h`, "five_hour", "5h", antigravityUsage, { grouped: true }));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-7d`, "seven_day", "7d", antigravityUsage, { grouped: true }));
+const quotaActions = [
+  new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage, { tag: "Claude" }),
+  new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage, { tag: "Claude" }),
+  new QuotaAction(`${PLUGIN}.antigravity-quota-5h`, "five_hour", "5h", antigravityUsage, { grouped: true }),
+  new QuotaAction(`${PLUGIN}.antigravity-quota-7d`, "seven_day", "7d", antigravityUsage, { grouped: true }),
+];
+for (const action of quotaActions) streamDeck.actions.registerAction(action);
 // The logo key has the Stream Deck app open the project's page; the plugin itself opens nothing.
 streamDeck.actions.registerAction(new ProjectPageAction(`${PLUGIN}.project-page`, (url) => streamDeck.system.openUrl(url)));
 
@@ -138,12 +141,18 @@ streamDeck.system.onSystemDidWakeUp(() => {
   antigravityUsage.refresh();
 });
 
-// Gen-Z mode, in which keys shimmer and burst, is switched in any session key's settings panel, for all keys at once.
-streamDeck.settings.onDidReceiveGlobalSettings((ev) => board.globalSettingsChanged(ev.settings));
+// Gen-Z mode, in which keys shimmer, burst and tell you to touch grass, is
+// switched in any session key's settings panel, for all keys at once.
+/** @param {unknown} settings */
+function settingsChanged(settings) {
+  board.globalSettingsChanged(settings);
+  for (const action of quotaActions) action.globalSettingsChanged(settings);
+}
+streamDeck.settings.onDidReceiveGlobalSettings((ev) => settingsChanged(ev.settings));
 
 await streamDeck.connect();
 logger.info("Code Command Center connected");
 streamDeck.settings.getGlobalSettings().then(
-  (settings) => board.globalSettingsChanged(settings),
+  (settings) => settingsChanged(settings),
   () => logger.warn("The plugin's settings could not be read; Gen-Z mode stays off"),
 );

@@ -76,6 +76,15 @@ const BURST = {
   /** The part of the burst the pop takes. */
   popShare: 0.4,
 };
+/** The grass along the bottom of a quota key whose limit is full, swaying. */
+const GRASS = {
+  colours: ["#2EA043", "#3FB950", "#56D364"],
+  blades: 13,
+  /** Half the width of a blade at its root. */
+  root: 3.5,
+  /** How far the tip of a blade sways to either side. */
+  sway: 3.5,
+};
 
 /**
  * @typedef {object} SessionKeyView
@@ -153,6 +162,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @property {string} footer time until the reset, or why there is none
  * @property {number} [even] the percent that even use would have reached by now, drawn as a tick on the bar
  * @property {boolean} [warn] the footer is a warning
+ * @property {number} [grass] the limit is full: the key tells you to touch grass, with grass that sways, here from 0 to 1 in its cycle
  */
 
 /**
@@ -160,15 +170,27 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @param {QuotaKeyView} view
  * @returns {string} SVG
  */
-export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false }) {
+export function renderQuotaKey({ title, tag = "", percent, value, footer, even, warn = false, grass }) {
   const used = percent === undefined ? 0 : Math.min(100, Math.max(0, percent));
   const tone = used >= 90 ? PALETTE.error.bg : used >= 70 ? PALETTE.waiting.bg : PALETTE.done.bg;
   const middle = value ?? (percent === undefined ? "–" : `${Math.round(used)}%`);
   const footerSize = textWidth(footer, SMALLEST) > LINE_WIDTH ? 18 : SMALLEST;
+  const heading =
+    text(14, 32, 24, QUOTA.title, "start", title) +
+    (tag === "" ? "" : text(KEY_SIZE - 14, 30, textWidth(tag, 18) > 76 ? 15 : 18, QUOTA.title, "end", tag));
+  if (grass !== undefined) {
+    return frame(
+      QUOTA.bg,
+      heading +
+        text(CENTRE, 64, 30, QUOTA.value, "middle", "touch") +
+        text(CENTRE, 92, 30, QUOTA.value, "middle", "grass") +
+        text(CENTRE, 114, footerSize, QUOTA.footer, "middle", footer) +
+        blades(grass),
+    );
+  }
   return frame(
     QUOTA.bg,
-    text(14, 32, 24, QUOTA.title, "start", title) +
-      (tag === "" ? "" : text(KEY_SIZE - 14, 30, textWidth(tag, 18) > 76 ? 15 : 18, QUOTA.title, "end", tag)) +
+    heading +
       text(CENTRE, 84, 44, QUOTA.value, "middle", middle) +
       `<rect x="12" y="96" width="120" height="10" rx="5" fill="${QUOTA.track}"/>` +
       (used > 0 ? `<rect x="12" y="96" width="${Math.max(10, Math.round(used * 1.2))}" height="10" rx="5" fill="${tone}"/>` : "") +
@@ -235,6 +257,27 @@ function sheen(phase, colours) {
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
+}
+
+/**
+ * Blades of grass along the bottom of a key, each swaying a little after its neighbour.
+ * @param {number} phase from 0 to 1 in the sway's cycle
+ * @returns {string} SVG
+ */
+function blades(phase) {
+  const { blades: count, root, colours } = GRASS;
+  const gap = KEY_SIZE / count;
+  return Array.from({ length: count }, (_, index) => {
+    const x = gap * (index + 0.5);
+    const height = 15 + ((index * 5) % 4) * 3;
+    const tip = x + GRASS.sway * Math.sin(2 * Math.PI * (phase + index * 0.09));
+    const middle = KEY_SIZE - height / 2;
+    return (
+      `<path fill="${colours[index % colours.length]}" d="M ${round(x - root)} ${KEY_SIZE} ` +
+      `Q ${round(x - 1)} ${round(middle)} ${round(tip)} ${KEY_SIZE - height} ` +
+      `Q ${round(x + 1)} ${round(middle)} ${round(x + root)} ${KEY_SIZE} Z"/>`
+    );
+  }).join("");
 }
 
 /**

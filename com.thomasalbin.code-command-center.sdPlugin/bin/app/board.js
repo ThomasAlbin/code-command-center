@@ -4,6 +4,7 @@ import { folderLabel, formatElapsed, reasonWord } from "../core/format.js";
 import { projectOf } from "../core/parse-agents.js";
 import { listProjects, nextPin, pinOf } from "../core/pins.js";
 import { renderEmptyKey, renderPinnedEmptyKey, renderSessionKey, svgToDataUri } from "../core/render.js";
+import { genZOf } from "../core/settings.js";
 import { assignSlots } from "../core/slots.js";
 import { displayState, elapsed, overdue, priority } from "../core/state.js";
 
@@ -355,14 +356,6 @@ function burstOf({ session, state }, now) {
   const since = session.memo.doneSince;
   if (state !== "done" || since === undefined || now < since || now - since >= BURST_MS) return undefined;
   return (now - since) / BURST_MS;
-}
-
-/**
- * @param {unknown} settings the plugin's settings, as Stream Deck stores them
- * @returns {boolean} whether Gen-Z mode is on; it is not unless switched on
- */
-function genZOf(settings) {
-  return settings !== null && typeof settings === "object" && /** @type {{ genZ?: unknown }} */ (settings).genZ === true;
 }
 
 /**

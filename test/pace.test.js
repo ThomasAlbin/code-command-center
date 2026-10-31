@@ -177,6 +177,15 @@ test("a press names the time the limit resets, with its day when that is not tod
   assert.equal(describeLimit("5h", old, undefined, { reset: true }).footer, "resets", "an old reading still knows when it resets");
 });
 
+test("in Gen-Z mode a full limit tells you to touch grass until it resets", () => {
+  const full = /** @type {const} */ ({ status: "ok", percent: 100, resetsAt: NOW + 2 * HOUR, resetsInMs: 2 * HOUR, writtenAt: NOW, stale: false });
+  assert.deepEqual(describeLimit("5h", full, undefined, { grass: 0.25 }), { title: "5h", grass: 0.25, footer: "for 2h" });
+  assert.deepEqual(describeLimit("5h", full), { title: "5h", percent: 100, footer: "2h" }, "not without Gen-Z mode");
+  assert.equal(describeLimit("5h", { ...full, percent: 99 }, undefined, { grass: 0.25 }).grass, undefined, "not before it is full");
+  assert.equal(describeLimit("5h", full, undefined, { grass: 0.25, reset: true }).value, "14:00", "a press still shows the reset");
+  assert.equal(describeLimit("5h", { ...full, resetsAt: undefined, resetsInMs: undefined }, undefined, { grass: 0 }).footer, "");
+});
+
 test("a press changes nothing while the reset time is not known", () => {
   const unknown = /** @type {const} */ ({ status: "ok", percent: 70, resetsAt: undefined, resetsInMs: undefined, writtenAt: NOW, stale: false });
   assert.deepEqual(describeLimit("5h", unknown, undefined, { reset: true }), describeLimit("5h", unknown));
@@ -199,6 +208,16 @@ test("a warning is drawn in the warning colour and still fits the key", () => {
   const warning = renderQuotaKey({ title: "7d", percent: 70, footer: "full Wed 18:00", warn: true });
   assert.ok(/font-size="20" fill="#C9D1D9">2d</.test(calm));
   assert.ok(/font-size="18" fill="#F0883E">full Wed 18:00</.test(warning), "a long footer is set smaller");
+});
+
+test("a key that says to touch grass has grass that sways, and no bar", () => {
+  const at = (/** @type {number} */ grass) => renderQuotaKey({ title: "5h", tag: "Claude", footer: "for 2h", grass });
+  const svg = at(0);
+  assert.ok(svg.includes(">touch<") && svg.includes(">grass<") && svg.includes(">for 2h<") && svg.includes(">Claude<"));
+  assert.ok(!svg.includes('width="120" height="10"'), "no bar");
+  assert.equal((svg.match(/<path fill="#[0-9A-F]{6}" d="M /g) ?? []).length, 13);
+  assert.notEqual(at(0.25), at(0), "it sways");
+  assert.ok(!svg.includes("NaN") && !svg.includes("undefined"));
 });
 
 test("the time a limit resets takes the place of the percent", () => {

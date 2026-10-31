@@ -40,6 +40,8 @@ const rows = [
     renderQuotaKey({ title: "5h", percent: 42, value: "16:30", footer: "resets" }),
     renderQuotaKey({ title: "7d", percent: 72, value: "18:00", footer: "resets Wed", even: 60 }),
     renderQuotaKey({ title: "7d", tag: "Argon", percent: 13, value: "21:36", footer: "resets Mon" }),
+    renderQuotaKey({ title: "5h", tag: "Claude", footer: "for 2h 13m", grass: 0.2 }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 41, footer: "3d 4h" }),
   ],
   [
     renderSessionKey({ app: "desktop", state: "working", label: "atlas", time: "12m" }),
