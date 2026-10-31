@@ -49,7 +49,7 @@ const rows = [
     renderSessionKey({ app: "desktop", state: "waiting", label: "test", time: "6m", reason: "permission", urgent: true, lit: true, pinned: true }),
   ],
   [
-    renderSessionKey({ app: "desktop", state: "working", label: "test" }),
+    renderSessionKey({ app: "desktop", state: "working", label: "test", holo: 0.25 }),
     renderSessionKey({ app: "desktop", state: "waiting", label: "examples", pinned: true }),
     renderSessionKey({ app: "vscode", state: "done", label: "misty-streams" }),
     renderSessionKey({ app: "vscode", state: "idle", label: "weather-api", pinned: true }),

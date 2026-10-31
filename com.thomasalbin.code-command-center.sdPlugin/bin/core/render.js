@@ -35,6 +35,24 @@ const EMPTY = { bg: "#0D1117", fg: "#484F58" };
 /** A pinned key whose project has no session: readable, but clearly not running. */
 const NOT_RUNNING = { bg: "#0D1117", fg: "#8B949E" };
 const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D1D9", track: "#30363D" };
+/**
+ * The holographic shimmer of a working key: bands of colour that drift across
+ * it, and a glint that sweeps over it once in each cycle. It lies between the
+ * key's colour and what is drawn on it, so the logo and the label stay sharp.
+ */
+const SHEEN = {
+  /** The direction the bands drift in, in degrees down from the horizontal. */
+  angle: 30,
+  /** The distance after which the bands repeat; they drift by that much in one cycle. */
+  period: 96,
+  colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"],
+  opacity: 0.38,
+  /** Half the width of the glint. */
+  glint: 26,
+  glintOpacity: 0.65,
+  /** The part of the cycle the glint takes to cross the key. For the rest of it, there is none. */
+  glintShare: 0.55,
+};
 
 /**
  * @typedef {object} SessionKeyView
@@ -47,6 +65,7 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
  * @property {string} [reason] what a waiting session waits for, in one word
  * @property {boolean} [urgent] the session has waited long without being looked at
  * @property {boolean} [lit] the bright half of an urgent key's pulse
+ * @property {number} [holo] where the holographic shimmer is in its cycle, from 0 to 1; no shimmer without it
  */
 
 /**
@@ -57,7 +76,10 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
  * @param {Logos} [logos] the logo of each app; the plugin's own marks unless the apps' logos were found
  * @returns {string} SVG
  */
-export function renderSessionKey({ app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false }, logos = LOGOS) {
+export function renderSessionKey(
+  { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo },
+  logos = LOGOS,
+) {
   const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : PALETTE[state];
   const fitted = fitLabel(label);
   // The reason takes the last line, in lighter type, so the label moves up, and one of two lines shrinks.
@@ -67,8 +89,9 @@ export function renderSessionKey({ app, state, label, overflow = 0, pinned = fal
       : labelText(fitted, fg, fitted.lines.length === 2 ? 90 : 94, SMALLEST) + text(CENTRE, 131, SMALLEST, fg, "middle", reason, 400);
   return frame(
     bg,
-    // Without a listing there is no session to show, whichever app the key is for.
-    (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size, fg)) +
+    (holo === undefined ? "" : sheen(holo)) +
+      // Without a listing there is no session to show, whichever app the key is for.
+      (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size, fg)) +
       name +
       // The pin and the count share the left corner: only an automatic key carries a count.
       (overflow > 0 ? text(CORNER, 26, 22, fg, "start", `+${overflow}`) : "") +
@@ -144,6 +167,55 @@ export function renderEmptyKey(caption, app, logos = LOGOS) {
  */
 export function svgToDataUri(svg) {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/**
+ * @param {number} phase where the shimmer is in its cycle, from 0 to 1
+ * @returns {string} SVG, to lie over the key's colour
+ */
+function sheen(phase) {
+  const { period, colours, glint } = SHEEN;
+  const angle = (SHEEN.angle * Math.PI) / 180;
+  const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
+  /** How far the key reaches in the direction of the drift. */
+  const reach = KEY_SIZE * (dx + dy);
+  /**
+   * @param {number} from distance along the drift
+   * @param {number} to
+   */
+  const along = (from, to) =>
+    `x1="${round(from * dx)}" y1="${round(from * dy)}" x2="${round(to * dx)}" y2="${round(to * dy)}"`;
+
+  // Four periods cover the key wherever the bands are; one later the pattern is the same again.
+  const start = (phase - 1) * period;
+  const count = 4 * colours.length;
+  const stops = Array.from(
+    { length: count + 1 },
+    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${SHEEN.opacity}"/>`,
+  ).join("");
+  let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(start, start + 4 * period)}>${stops}</linearGradient>`;
+  let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
+
+  const crossed = phase / SHEEN.glintShare;
+  if (crossed <= 1) {
+    const centre = -glint + crossed * (reach + 2 * glint);
+    defs +=
+      `<linearGradient id="glint" gradientUnits="userSpaceOnUse" ${along(centre - glint, centre + glint)}>` +
+      `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
+      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${SHEEN.glintOpacity}"/>` +
+      `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`;
+    body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
+  }
+  return `<defs>${defs}</defs>${body}`;
+}
+
+/**
+ * @param {number} value
+ * @param {number} [digits]
+ * @returns {string} without trailing zeros, so the same shimmer is always the same text
+ */
+function round(value, digits = 1) {
+  return String(Number(value.toFixed(digits)));
 }
 
 /**

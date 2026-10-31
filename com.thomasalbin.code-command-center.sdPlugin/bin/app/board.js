@@ -63,6 +63,12 @@ const REDRAW_MS = 60_000;
 const CLOCK_MS = 5_000;
 /** How long each half of the pulse of a key that has waited too long lasts. */
 const PULSE_MS = 1_000;
+/** One cycle of the holographic shimmer of a working key. */
+const HOLO_MS = 4_000;
+/** How much later the shimmer reaches the next key along, so it travels across the deck. */
+const HOLO_STAGGER_MS = 300;
+/** How often a shimmering key is redrawn. */
+const HOLO_FRAME_MS = 100;
 /**
  * The keys of a page appear one event at a time. Sessions are handed out once
  * they have all arrived, so the layout does not depend on the order of events.
@@ -78,6 +84,8 @@ export class Board {
   #assignments = { desktop: new Map(), vscode: new Map(), antigravity: new Map() };
   /** @type {NodeJS.Timeout | undefined} */
   #redraw;
+  /** Whether working keys shimmer, a setting for all keys at once. */
+  #holo = false;
   /** @type {NodeJS.Timeout | undefined} */
   #settle;
 
@@ -122,6 +130,17 @@ export class Board {
     const placed = this.#keys.get(id);
     if (placed === undefined) return;
     placed.pin = pinOf(settings);
+    this.render();
+  }
+
+  /**
+   * The plugin's settings changed: they say whether working keys shimmer.
+   * @param {unknown} settings
+   */
+  globalSettingsChanged(settings) {
+    const holo = holoOf(settings);
+    if (holo === this.#holo) return;
+    this.#holo = holo;
     this.render();
   }
 
@@ -222,10 +241,11 @@ export class Board {
         const shown = current ? assigned : undefined;
         if (shown !== undefined) {
           const { memo } = shown.session;
-          if (overdue(memo, now)) redrawIn = PULSE_MS;
+          if (this.#holo && shown.state === "working") redrawIn = Math.min(redrawIn, HOLO_FRAME_MS);
+          if (overdue(memo, now)) redrawIn = Math.min(redrawIn, PULSE_MS);
           else if (elapsed(memo, now) !== undefined) redrawIn = Math.min(redrawIn, CLOCK_MS);
         }
-        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#deps.logos));
+        this.#show(entry, image(entry, listed, shown, entry === last ? overflow : 0, now, this.#holo, this.#deps.logos));
       }
     }
 
@@ -272,10 +292,11 @@ export class Board {
  * @param {Shown | undefined} shown the key's session, if what is known of it is current
  * @param {number} overflow
  * @param {number} now
+ * @param {boolean} holo whether working keys shimmer
  * @param {import("../core/render.js").Logos} [logos]
  * @returns {string} SVG
  */
-function image(placed, healthy, shown, overflow, now, logos) {
+function image(placed, healthy, shown, overflow, now, holo, logos) {
   const pinned = placed.pin !== undefined;
   const app = placed.group;
   if (shown !== undefined) {
@@ -293,6 +314,7 @@ function image(placed, healthy, shown, overflow, now, logos) {
         reason: shown.state === "waiting" ? reasonWord(info.waitingFor) : "",
         urgent,
         lit: urgent && Math.floor(now / PULSE_MS) % 2 === 1,
+        holo: holo && shown.state === "working" ? holoPhase(now, placed.key.coordinates) : undefined,
       },
       logos,
     );
@@ -300,6 +322,27 @@ function image(placed, healthy, shown, overflow, now, logos) {
   if (!healthy) return renderSessionKey({ app, state: "unknown", label: "", pinned }, logos);
   if (placed.pin !== undefined) return renderPinnedEmptyKey(folderLabel(placed.pin), app, logos);
   return renderEmptyKey(CAPTIONS[app], app, logos);
+}
+
+/**
+ * Where the shimmer of a key is in its cycle. It starts in the top left
+ * corner of the deck and reaches each key a little later than the one before.
+ *
+ * @param {number} now
+ * @param {{ column: number, row: number } | undefined} coordinates
+ * @returns {number} from 0 to 1
+ */
+function holoPhase(now, coordinates) {
+  const delay = coordinates === undefined ? 0 : (coordinates.column + coordinates.row) * HOLO_STAGGER_MS;
+  return (((now - delay) % HOLO_MS) + HOLO_MS) % HOLO_MS / HOLO_MS;
+}
+
+/**
+ * @param {unknown} settings the plugin's settings, as Stream Deck stores them
+ * @returns {boolean} whether working keys shimmer; they do not unless switched on
+ */
+function holoOf(settings) {
+  return settings !== null && typeof settings === "object" && /** @type {{ holo?: unknown }} */ (settings).holo === true;
 }
 
 /**

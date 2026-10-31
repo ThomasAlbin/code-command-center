@@ -480,6 +480,55 @@ test("a pulsing key redraws by itself", async () => {
   board.keyDisappeared("a");
 });
 
+/** @param {string} svg where the shimmer's bands start; nothing without a shimmer */
+const bands = (svg) => /<linearGradient id="sheen"[^>]* x1="([^"]+)"/.exec(svg)?.[1];
+
+test("once switched on, keys of working sessions shimmer, each a little after the one before", () => {
+  const clock = { now: NOW };
+  const { board } = setUp([tracked("alpha", "desktop", "working"), tracked("beta", "desktop", "working"), tracked("gamma", "desktop", "idle")], clock);
+  const keys = [fakeKey("a", 0, 0), fakeKey("b", 0, 1), fakeKey("c", 0, 2)];
+  for (const key of keys) board.keyAppeared("desktop", key);
+  board.render();
+  assert.ok(keys.every((key) => bands(key.shown) === undefined), "off unless switched on");
+
+  board.globalSettingsChanged({ holo: true });
+  const [first, second, idle] = keys;
+  assert.ok(bands(first.shown) !== undefined && bands(second.shown) !== undefined);
+  assert.notEqual(bands(first.shown), bands(second.shown), "the shimmer travels across the deck");
+  assert.equal(bands(idle.shown), undefined, "only working keys shimmer");
+
+  const before = first.shown;
+  clock.now += 100;
+  board.render();
+  assert.notEqual(first.shown, before, "the next frame");
+
+  board.globalSettingsChanged({});
+  assert.ok(keys.every((key) => bands(key.shown) === undefined));
+});
+
+test("only a setting of true switches the shimmer on", () => {
+  const { board } = setUp([tracked("alpha", "desktop", "working")]);
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  for (const settings of [null, [], { holo: "yes" }, { holo: 1 }]) {
+    board.globalSettingsChanged(settings);
+    board.render();
+    assert.equal(bands(key.shown), undefined, JSON.stringify(settings));
+  }
+});
+
+test("a shimmering key redraws by itself", async () => {
+  const { board } = setUp([tracked("alpha", "desktop", "working")], { get now() { return Date.now(); } });
+  const key = fakeKey("a", 0, 0);
+  board.keyAppeared("desktop", key);
+  board.globalSettingsChanged({ holo: true });
+  const drawn = key.images.length;
+
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  assert.ok(key.images.length >= drawn + 2, "frames arrive without any event");
+  board.keyDisappeared("a");
+});
+
 // --- the Antigravity CLI ---
 
 test("Antigravity CLI keys show the CLI's sessions, and only those", () => {

@@ -103,6 +103,26 @@ test("a key that has no listing to show carries a question mark, whichever app i
   assert.ok(!svg.includes(LOGOS.vscode.d));
 });
 
+test("a shimmering key keeps its colour, with the shimmer beneath the logo and the label", () => {
+  const plain = renderSessionKey({ app: "desktop", state: "working", label: "alpha" });
+  const shimmering = renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: 0.2 });
+  assert.ok(!plain.includes("url(#sheen)"));
+  assert.equal(/<rect[^>]*fill="(#[0-9A-F]{6})"/.exec(shimmering)?.[1], "#1F6FEB");
+  const sheen = shimmering.indexOf("url(#sheen)");
+  assert.ok(sheen > 0 && sheen < shimmering.indexOf(LOGOS.desktop.d) && sheen < shimmering.indexOf(">alpha</text>"));
+  assert.ok(!shimmering.includes("NaN") && !shimmering.includes("undefined"));
+});
+
+test("the glint crosses a shimmering key early in each cycle, and the bands keep drifting", () => {
+  /** @param {number} phase */
+  const at = (phase) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: phase });
+  assert.ok(at(0).includes("url(#glint)"));
+  assert.ok(at(0.5).includes("url(#glint)"));
+  assert.ok(!at(0.8).includes("url(#glint)"), "then it rests");
+  assert.notEqual(at(0.8), at(0.9), "the bands still move");
+  assert.equal(at(0.3), at(0.3), "the same moment is the same image, so nothing is sent twice");
+});
+
 test("the logo stays clear of the count and of the clock in the corners", () => {
   const svg = renderSessionKey({ app: "vscode", state: "working", label: "alpha", overflow: 2, time: "1h05" });
   const match = /<path transform="translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)"/.exec(svg);
