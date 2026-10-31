@@ -3,7 +3,7 @@
   "Name": "Code Command Center",
   "Version": "1.0.0.0",
   "Author": "Thomas Albin",
-  "Description": "Status lights for Claude Code sessions in the Claude desktop app and VS Code, and plan usage.",
+  "Description": "Status lights for Claude Code sessions in the Claude desktop app and VS Code and for Antigravity CLI sessions, and plan usage.",
   "Category": "Code Command Center",
   "CategoryIcon": "imgs/plugin/category",
   "Icon": "imgs/plugin/icon",
@@ -63,6 +63,23 @@
       ]
     },
     {
+      "UUID": "com.thomasalbin.code-command-center.session-antigravity",
+      "Name": "Session in Antigravity CLI",
+      "Tooltip": "Shows an Antigravity CLI session that runs in a terminal. Press to bring its terminal to the front, hold to switch project.",
+      "Icon": "imgs/actions/session-antigravity/icon",
+      "PropertyInspectorPath": "ui/session.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/session-antigravity/key"
+        }
+      ]
+    },
+    {
       "UUID": "com.thomasalbin.code-command-center.quota-5h",
       "Name": "Quota 5h",
       "Tooltip": "Shows how much of the 5-hour plan limit is used and when it resets. Display only.",
@@ -83,6 +100,40 @@
       "Name": "Quota 7d",
       "Tooltip": "Shows how much of the 7-day plan limit is used and when it resets. Display only.",
       "Icon": "imgs/actions/quota/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/quota/key"
+        }
+      ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.antigravity-quota-5h",
+      "Name": "Antigravity Quota 5h",
+      "Tooltip": "Shows how much of a 5-hour limit of the Antigravity CLI is used, for the group of models chosen in its settings. Display only.",
+      "Icon": "imgs/actions/quota/icon",
+      "PropertyInspectorPath": "ui/quota.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/quota/key"
+        }
+      ]
+    },
+    {
+      "UUID": "com.thomasalbin.code-command-center.antigravity-quota-7d",
+      "Name": "Antigravity Quota 7d",
+      "Tooltip": "Shows how much of a weekly limit of the Antigravity CLI is used, for the group of models chosen in its settings, such as Gemini or Argon. Display only.",
+      "Icon": "imgs/actions/quota/icon",
+      "PropertyInspectorPath": "ui/quota.html",
       "Controllers": [
         "Keypad"
       ],

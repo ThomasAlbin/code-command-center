@@ -49,10 +49,11 @@ if [ -d "$TARGET" ]; then
   chmod -R u+w "$TARGET"
   rm -rf "$TARGET"
 fi
-mkdir -p "$TARGET/.claude-plugin" "$DATA/usage"
+mkdir -p "$TARGET/.claude-plugin" "$TARGET/mod" "$DATA/usage"
 chmod 700 "$DATA" "$DATA/usage"
 cp "$ROOT/.claude-plugin/marketplace.json" "$TARGET/.claude-plugin/"
-cp -R "$ROOT/mod" "$TARGET/mod"
+# The mod alone: the Antigravity CLI's bridge next to it is not Claude Code's business.
+cp -R "$ROOT/mod/deck-bridge" "$TARGET/mod/"
 cp "$ROOT/LICENSE.md" "$TARGET/"
 find "$TARGET" -name .DS_Store -delete
 chmod -R a-w "$TARGET"

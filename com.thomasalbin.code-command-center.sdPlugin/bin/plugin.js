@@ -5,6 +5,7 @@ import path from "node:path";
 import { ProjectPageAction } from "./actions/project-page.js";
 import { QuotaAction } from "./actions/quota.js";
 import { SessionAction } from "./actions/session.js";
+import { AntigravityCli, readQuota } from "./adapters/antigravity-cli.js";
 import { ClaudeCli } from "./adapters/claude-cli.js";
 import { DevContainers } from "./adapters/containers.js";
 import { bringToFront } from "./adapters/launcher.js";
@@ -47,7 +48,37 @@ const containers = new SessionMonitor({
   poll: { activeMs: 2_500, idleMs: 3_500 },
 });
 
-const monitor = new MonitorSet(mac, containers);
+// Sessions of the Antigravity CLI on this Mac. The CLI has no command that
+// lists them; the bridge in `mod/antigravity-bridge/`, run as its status line,
+// writes one file per CLI process into this folder whenever the state changes.
+const antigravityDirectory = path.join(home, ".code-command-center", "antigravity");
+const agy = new AntigravityCli(antigravityDirectory, readProcessTable, isAlive);
+const antigravity = new SessionMonitor({
+  listSessions: () => agy.listSessions(),
+  readProcessTable: async () => new Map(), // the listing has looked at the processes itself
+  isAlive,
+  watch: (onChange) => {
+    try {
+      ensureDirectory(antigravityDirectory); // the bridge writes only into a folder that is there
+    } catch {
+      // Without the folder there are simply no sessions.
+    }
+    return watchDirectory(antigravityDirectory, /^\d+\.json$/, onChange);
+  },
+  now: Date.now,
+  classify: () => "antigravity",
+});
+
+const monitor = new MonitorSet(mac, containers, antigravity);
+
+// The Antigravity CLI's plan limits, which the bridge writes into the same
+// folder. They are the CLI's own, so they have their own keys.
+const antigravityUsage = new UsageMonitor({
+  read: () => readQuota(antigravityDirectory),
+  watch: (onChange) => watchDirectory(antigravityDirectory, /^quota\.json$/, onChange),
+  prepare: () => ensureDirectory(antigravityDirectory),
+  now: Date.now,
+});
 // Keys carry the logo of their app where that app is installed here, and the
 // plugin's own mark where it is not.
 const logos = { ...LOGOS, ...readLocalLogos(home) };
@@ -89,8 +120,11 @@ process.on("unhandledRejection", () => logger.error("An operation failed unexpec
 
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-desktop`, "desktop", board));
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-vscode`, "vscode", board));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage));
+streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-antigravity`, "antigravity", board));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage, { tag: "Claude" }));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage, { tag: "Claude" }));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-5h`, "five_hour", "5h", antigravityUsage, { grouped: true }));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-7d`, "seven_day", "7d", antigravityUsage, { grouped: true }));
 // The logo key has the Stream Deck app open the project's page; the plugin itself opens nothing.
 streamDeck.actions.registerAction(new ProjectPageAction(`${PLUGIN}.project-page`, (url) => streamDeck.system.openUrl(url)));
 
@@ -101,6 +135,7 @@ streamDeck.system.onSystemDidWakeUp(() => {
   monitor.requestRefresh();
   usage.refresh();
   void usage.fetchElsewhere();
+  antigravityUsage.refresh();
 });
 
 await streamDeck.connect();

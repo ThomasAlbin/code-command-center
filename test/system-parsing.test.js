@@ -96,6 +96,13 @@ test("a reserved VS Code key without a session opens its project", () => {
   });
 });
 
+test("an Antigravity CLI session in VS Code's terminal brings the window it belongs to forward", () => {
+  assert.deepEqual(focusTarget("antigravity", { cwd: "/Users/dev/thesis", host: VS_CODE }), { bundleId: VS_CODE, within: "/Users/dev/thesis" });
+  assert.deepEqual(focusTarget("antigravity", { host: VS_CODE }), { bundleId: VS_CODE }, "without a folder, VS Code itself");
+  assert.deepEqual(focusTarget("antigravity", { cwd: "/Users/dev/thesis", host: "com.apple.Terminal" }), { bundleId: "com.apple.Terminal" });
+  assert.equal(focusTarget("antigravity", { cwd: "/Users/dev/thesis" }), undefined, "no app holds it");
+});
+
 test("sessions from other places have nothing to focus", () => {
   assert.equal(focusTarget("other", { cwd: "/tmp" }), undefined);
 });

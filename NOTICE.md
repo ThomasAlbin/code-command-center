@@ -2,11 +2,11 @@
 
 ## Independent project
 
-Code Command Center is an independent project. It is not affiliated with, endorsed by or sponsored by Anthropic, Elgato, Corsair, Microsoft or Docker.
+Code Command Center is an independent project. It is not affiliated with, endorsed by or sponsored by Anthropic, Google, Elgato, Corsair, Microsoft or Docker.
 
 ## Names
 
-Claude and Claude Code are names of Anthropic. Stream Deck is a name of Elgato, a brand of Corsair. Visual Studio Code and VS Code are names of Microsoft. Docker is a name of Docker, Inc. macOS is a name of Apple. These names are trademarks of their owners and are used here only to say what the software works with.
+Claude and Claude Code are names of Anthropic. Antigravity is a name of Google. Stream Deck is a name of Elgato, a brand of Corsair. Visual Studio Code and VS Code are names of Microsoft. Docker is a name of Docker, Inc. macOS is a name of Apple. The names of the terminal apps the plugin can bring forward belong to their makers. These names are trademarks of their owners and are used here only to say what the software works with.
 
 ## The Code Command Center logo
 
@@ -14,7 +14,7 @@ The Code Command Center logo, three arrow badges in a row that point to the righ
 
 ## Logos of others
 
-This repository contains no logo of any of these companies. On the keys, the plugin draws two plain marks of its own: a speech bubble for the Claude app and a pair of angle brackets for VS Code.
+This repository contains no logo of any of these companies. On the keys, the plugin draws three plain marks of its own: a speech bubble for the Claude app, a pair of angle brackets for VS Code and a terminal prompt for the Antigravity CLI.
 
 Where the Claude Code extension for VS Code, or VS Code itself, is installed on a Mac, the plugin reads that app's logo from the app's own files on that Mac and shows it on the keys of the Stream Deck connected to it. The logos stay with their owners. They are not part of this project and are not licensed by it.
 

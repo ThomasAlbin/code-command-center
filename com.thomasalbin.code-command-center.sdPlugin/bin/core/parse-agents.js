@@ -16,6 +16,7 @@
  * @property {string} [state] background sessions: `working`, `blocked`, `done`, `failed` or `stopped`
  * @property {string} [id] background sessions: short id
  * @property {ContainerRef} [container] set by the plugin for a session that runs inside a Dev Container
+ * @property {string} [host] set by the plugin for an Antigravity CLI session: bundle id of the app that holds its terminal
  */
 
 /**

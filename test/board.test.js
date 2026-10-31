@@ -17,7 +17,7 @@ const MINUTE = 60_000;
 /**
  * A session in the folder `/work/<name>`.
  * @param {string} name
- * @param {"desktop" | "vscode" | "other"} client
+ * @param {"desktop" | "vscode" | "antigravity" | "other"} client
  * @param {BaseState} base
  * @param {number} [lastChange]
  * @param {Partial<SessionInfo>} [info]
@@ -39,7 +39,7 @@ function fakeMonitor(sessions) {
   return {
     sessions,
     healthy: true,
-    /** @type {Array<{ desktop: number, vscode: number }>} */
+    /** @type {Array<{ desktop: number, vscode: number, antigravity: number }>} */
     watched: [],
     /** @type {string[]} */
     acknowledged: [],
@@ -47,7 +47,7 @@ function fakeMonitor(sessions) {
     onChange(listener) {
       listeners.add(listener);
     },
-    /** @param {{ desktop: number, vscode: number }} visible */
+    /** @param {{ desktop: number, vscode: number, antigravity: number }} visible */
     watch(visible) {
       this.watched.push({ ...visible });
     },
@@ -263,13 +263,17 @@ test("each source of sessions is asked only while a key that can show it is visi
   const { board, monitor } = setUp([]);
   board.keyAppeared("desktop", fakeKey("a", 0, 0));
   board.keyAppeared("vscode", fakeKey("v", 1, 0));
+  board.keyAppeared("antigravity", fakeKey("g", 2, 0));
   board.keyDisappeared("v");
   board.keyDisappeared("a");
+  board.keyDisappeared("g");
   assert.deepEqual(monitor.watched, [
-    { desktop: 1, vscode: 0 },
-    { desktop: 1, vscode: 1 },
-    { desktop: 1, vscode: 0 },
-    { desktop: 0, vscode: 0 },
+    { desktop: 1, vscode: 0, antigravity: 0 },
+    { desktop: 1, vscode: 1, antigravity: 0 },
+    { desktop: 1, vscode: 1, antigravity: 1 },
+    { desktop: 1, vscode: 0, antigravity: 1 },
+    { desktop: 0, vscode: 0, antigravity: 1 },
+    { desktop: 0, vscode: 0, antigravity: 0 },
   ]);
 });
 
@@ -474,4 +478,74 @@ test("a pulsing key redraws by itself", async () => {
   await new Promise((resolve) => setTimeout(resolve, 1150));
   assert.ok(key.images.length >= 2, "the other half of the pulse arrived without any event");
   board.keyDisappeared("a");
+});
+
+// --- the Antigravity CLI ---
+
+test("Antigravity CLI keys show the CLI's sessions, and only those", () => {
+  const { board } = setUp([
+    tracked("alpha", "desktop", "working"),
+    tracked("orbit", "antigravity", "waiting", NOW, { pid: 41, waitingFor: "permission", host: "com.apple.Terminal" }),
+    tracked("comet", "antigravity", "idle", NOW - MINUTE, { pid: 42 }),
+  ]);
+  const keys = [fakeKey("g1", 0, 0), fakeKey("g2", 0, 1), fakeKey("g3", 0, 2)];
+  for (const key of keys) board.keyAppeared("antigravity", key);
+  board.render();
+  assert.ok(keys[0].shown.includes(">orbit<") && keys[0].shown.includes(">permission<"), "the waiting session comes first");
+  assert.ok(keys[1].shown.includes(">comet<"));
+  assert.ok(keys[2].shown.includes(">Antigravity<"), "a free key names the CLI");
+  assert.ok(!keys.some((key) => key.shown.includes("alpha")));
+  assert.ok(keys[0].shown.includes(LOGOS.antigravity.d), "the CLI's mark");
+});
+
+test("Antigravity CLI keys keep their sessions while Claude Code cannot be listed", () => {
+  const { board, monitor } = setUp([
+    tracked("alpha", "desktop", "working"),
+    tracked("orbit", "antigravity", "working", NOW, { pid: 41 }),
+  ]);
+  const desktop = fakeKey("d", 0, 0);
+  const cli = [fakeKey("g1", 1, 0), fakeKey("g2", 1, 1)];
+  board.keyAppeared("desktop", desktop);
+  for (const key of cli) board.keyAppeared("antigravity", key);
+  board.render();
+  monitor.healthy = false;
+  monitor.emit();
+  assert.ok(desktop.shown.includes(">?<"));
+  assert.ok(cli[0].shown.includes(">orbit<"));
+  assert.ok(cli[1].shown.includes(">Antigravity<"), "a free key still says it has no session, not that it does not know");
+});
+
+test("pressing an Antigravity CLI key brings forward the app its terminal is in", async () => {
+  const { board, monitor, focused } = setUp([tracked("orbit", "antigravity", "idle", NOW, { pid: 41, host: "com.googlecode.iterm2" }, { doneSince: NOW })]);
+  board.keyAppeared("antigravity", fakeKey("g", 0, 0));
+  board.render();
+  await board.keyPressed("g");
+  assert.deepEqual(focused, [{ bundleId: "com.googlecode.iterm2" }]);
+  assert.deepEqual(monitor.acknowledged, ["orbit"]);
+});
+
+test("an Antigravity CLI key with no app to bring forward does nothing on a press", async () => {
+  const { board, monitor, focused } = setUp([tracked("orbit", "antigravity", "idle", NOW, { pid: 41 })]);
+  board.keyAppeared("antigravity", fakeKey("g", 0, 0));
+  board.keyAppeared("antigravity", fakeKey("empty", 0, 1));
+  board.render();
+  await board.keyPressed("g");
+  await board.keyPressed("empty");
+  assert.deepEqual(focused, [], "under tmux or SSH, and on a key without a session");
+  assert.deepEqual(monitor.acknowledged, ["orbit"], "the session still counts as seen");
+});
+
+test("an Antigravity CLI key can be reserved for a project", () => {
+  const { board } = setUp([
+    tracked("orbit", "antigravity", "working", NOW, { pid: 41 }),
+    tracked("comet", "antigravity", "idle", NOW, { pid: 42 }),
+  ]);
+  const key = fakeKey("g", 0, 0);
+  board.keyAppeared("antigravity", key, { pin: "/work/comet" });
+  board.render();
+  assert.ok(key.shown.includes(">comet<") && key.shown.includes(PIN));
+  assert.deepEqual(
+    board.choices("g").projects.map((project) => project.label),
+    ["comet", "orbit"],
+  );
 });

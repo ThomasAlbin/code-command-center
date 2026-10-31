@@ -9,7 +9,7 @@ import { EXPIRED_AFTER_MS, parseReading } from "../core/usage.js";
 const MAX_BYTES = 64 * 1024;
 
 /**
- * Creates the folder the `deck-bridge` mod writes into, private to the user.
+ * Creates a folder that a mod or bridge writes into, private to the user.
  * @param {string} directory
  */
 export function ensureDirectory(directory) {

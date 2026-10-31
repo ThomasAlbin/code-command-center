@@ -21,6 +21,7 @@ export function isSessionId(value) {
  * @property {string} bundleId app to bring to the front
  * @property {string} [session] id of the Claude Code session the Claude app should show
  * @property {string} [folder] folder on this Mac whose window should come forward
+ * @property {string} [within] folder on this Mac that lies in the VS Code window that should come forward
  * @property {{ localFolder: string, path?: string }} [devContainer] Dev Container whose window should come forward
  */
 
@@ -38,6 +39,14 @@ export function focusTarget(client, session, pin) {
     // asked for a live, interactive session, which on a desktop key is one it started itself.
     const live = session?.pid !== undefined && session.kind === "interactive";
     return live && isSessionId(session?.sessionId) ? { bundleId: CLAUDE_DESKTOP, session: session.sessionId } : { bundleId: CLAUDE_DESKTOP };
+  }
+  if (client === "antigravity") {
+    // The CLI runs in a terminal: the app that holds it comes forward. Without
+    // a session there is no terminal to bring, and a CLI under tmux or SSH has no app.
+    if (session?.host === undefined) return undefined;
+    // In VS Code's terminal, the window it belongs to, not whichever was used last.
+    if (session.host === VS_CODE && session.cwd?.startsWith("/")) return { bundleId: VS_CODE, within: session.cwd };
+    return { bundleId: session.host };
   }
   if (client !== "vscode") return undefined;
 

@@ -1,4 +1,5 @@
 // @ts-check
+import { fileURLToPath } from "node:url";
 
 // VS Code addresses the window of a Dev Container as
 // `vscode-remote://dev-container+<hex>/<folder inside the container>`, where
@@ -36,6 +37,49 @@ export function findDevContainerWindow(storage, localFolder, containerPath) {
     sameContainer ??= address;
   }
   return sameContainer;
+}
+
+/**
+ * Looks up the window that holds a folder on this Mac: of the folders VS Code
+ * records for its windows in `storage.json`, the deepest one that the folder
+ * lies in. A terminal inside VS Code starts in its window's folder, but may
+ * have moved below it since.
+ *
+ * @param {string} storage contents of the file
+ * @param {string} folder
+ * @returns {string | undefined} the window's folder; nothing when no window holds it
+ */
+export function findFolderWindow(storage, folder) {
+  /** @type {unknown} */
+  let data;
+  try {
+    data = JSON.parse(storage);
+  } catch {
+    return undefined;
+  }
+  const windows = /** @type {{ windowsState?: { lastActiveWindow?: unknown, openedWindows?: unknown } } | null} */ (data)?.windowsState;
+  const opened = Array.isArray(windows?.openedWindows) ? windows.openedWindows : [];
+  /** @type {string | undefined} */
+  let best;
+  for (const window of [windows?.lastActiveWindow, ...opened]) {
+    const local = localFolderOf(/** @type {{ folder?: unknown } | null | undefined} */ (window)?.folder);
+    if (local === undefined || !(folder === local || folder.startsWith(local === "/" ? "/" : `${local}/`))) continue;
+    if (best === undefined || local.length > best.length) best = local;
+  }
+  return best;
+}
+
+/**
+ * @param {unknown} uri a window's folder as VS Code records it
+ * @returns {string | undefined} the folder's path, if it is one on this Mac
+ */
+function localFolderOf(uri) {
+  if (typeof uri !== "string" || !uri.startsWith("file:///")) return undefined;
+  try {
+    return fileURLToPath(uri).replace(/(.)\/+$/, "$1");
+  } catch {
+    return undefined;
+  }
 }
 
 /**

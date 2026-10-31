@@ -149,6 +149,7 @@ test("the mod is installed as a write-protected copy and the uninstall removes a
       readFileSync(path.join(ROOT, "mod", "deck-bridge", "hooks", "register.js"), "utf8"),
     );
     assert.equal(lstatSync(path.join(copy, "mod", "deck-bridge", "hooks", "register.js")).mode & 0o222, 0, "not writable");
+    assert.deepEqual(readdirSync(path.join(copy, "mod")), ["deck-bridge"], "the mod alone, without the Antigravity CLI's bridge");
     assert.ok(existsSync(path.join(home, ".code-command-center", "usage")));
 
     const removed = run("uninstall.sh", home);
@@ -189,8 +190,108 @@ test("an uninstall that cannot read the settings removes nothing", () => {
   });
 });
 
+// --- the Antigravity CLI's bridge ---
+
+const AGY = { settings: [".gemini", "antigravity-cli", "settings.json"], bridge: [".code-command-center", "antigravity-bridge", "statusline.sh"] };
+const AGY_OTHERS = { model: "Gemini 4 Argon (High)", permissions: { allow: ["command(head)"] } };
+
+/**
+ * A stand-in home folder in which the Antigravity CLI has been started once.
+ * @param {(home: string, settings: string) => void} body
+ */
+function withAgy(body) {
+  withHome((home) => {
+    const settings = path.join(home, ...AGY.settings);
+    mkdirSync(path.dirname(settings), { recursive: true });
+    writeFileSync(settings, JSON.stringify(AGY_OTHERS), { mode: 0o600 });
+    body(home, settings);
+  });
+}
+
+test("the bridge is installed as a write-protected copy that the CLI runs as its status line", () => {
+  withAgy((home, settings) => {
+    const installed = run("install-agy.sh", home);
+    assert.equal(installed.status, 0, installed.out);
+    const bridge = path.join(home, ...AGY.bridge);
+    assert.deepEqual(json(settings), { ...AGY_OTHERS, statusLine: { type: "command", command: bridge, stack_with_default: true } });
+    assert.equal(lstatSync(settings).mode & 0o777, 0o600, "the file keeps its access rights");
+    assert.equal(readFileSync(bridge, "utf8"), readFileSync(path.join(ROOT, "mod", "antigravity-bridge", "statusline.sh"), "utf8"));
+    assert.equal(lstatSync(bridge).mode & 0o777, 0o555, "runs, but is not writable");
+    assert.equal(lstatSync(path.join(home, ".code-command-center", "antigravity")).mode & 0o777, 0o700, "the folder it writes into is private");
+    assert.ok(readdirSync(path.dirname(settings)).some((name) => name.startsWith("settings.json.backup-")));
+
+    assert.equal(run("install-agy.sh", home).status, 0, "it can be run again, to update the copy");
+    assert.equal(json(settings).statusLine.command, bridge);
+  });
+});
+
+test("a status line command of your own is never replaced", () => {
+  withAgy((home, settings) => {
+    const own = { ...AGY_OTHERS, statusLine: { type: "command", command: "~/my-statusline.sh" } };
+    writeFileSync(settings, JSON.stringify(own));
+    const installed = run("install-agy.sh", home);
+    assert.equal(installed.status, 1);
+    assert.match(installed.out, /already has a status line command/);
+    assert.match(installed.out, /my-statusline\.sh/);
+    assert.deepEqual(json(settings), own);
+    assert.ok(!existsSync(path.join(home, ".code-command-center")), "nothing was copied either");
+
+    const removed = run("uninstall.sh", home);
+    assert.equal(removed.status, 0, removed.out);
+    assert.deepEqual(json(settings), own, "the uninstall leaves it too");
+  });
+});
+
+test("without the Antigravity CLI nothing is installed", () => {
+  withHome((home) => {
+    const installed = run("install-agy.sh", home);
+    assert.equal(installed.status, 1);
+    assert.match(installed.out, /Antigravity CLI was not found/);
+    assert.ok(!existsSync(path.join(home, ".gemini")));
+    assert.ok(!existsSync(path.join(home, ".code-command-center")));
+  });
+});
+
+test("the uninstall takes the bridge out of the CLI's settings and leaves the rest", () => {
+  withAgy((home, settings) => {
+    assert.equal(run("install-agy.sh", home).status, 0);
+    const removed = run("uninstall.sh", home);
+    assert.equal(removed.status, 0, removed.out);
+    assert.match(removed.out, /Removed\. Quit and reopen/);
+    assert.deepEqual(json(settings), AGY_OTHERS);
+    assert.ok(!existsSync(path.join(home, ".code-command-center")));
+  });
+});
+
+test("without Node.js the uninstall says that the bridge is still the CLI's status line", (t) => {
+  if (spawnSync("/bin/sh", ["-c", "command -v node"], { env: { PATH: "/usr/bin:/bin" } }).status === 0) {
+    t.skip("this machine has node in a system folder");
+    return;
+  }
+  withAgy((home, settings) => {
+    assert.equal(run("install-agy.sh", home).status, 0);
+    const before = readFileSync(settings, "utf8");
+    const removed = run("uninstall.sh", home, { node: false });
+    assert.equal(removed.status, 1);
+    assert.match(removed.out, /still the\nstatus line command/);
+    assert.doesNotMatch(removed.out, /two entries are still in/, "there were none for Claude Code");
+    assert.equal(readFileSync(settings, "utf8"), before);
+  });
+});
+
+test("an install that cannot read the CLI's settings changes nothing", () => {
+  withAgy((home, settings) => {
+    writeFileSync(settings, "{ not json");
+    const installed = run("install-agy.sh", home);
+    assert.equal(installed.status, 1);
+    assert.match(installed.out, /not valid JSON/);
+    assert.equal(readFileSync(settings, "utf8"), "{ not json");
+    assert.ok(!existsSync(path.join(home, ".code-command-center")));
+  });
+});
+
 test("every script parses", () => {
-  for (const script of ["install.sh", "install-mod.sh", "install-mod-container.sh", "uninstall.sh", "pack.sh"]) {
+  for (const script of ["install.sh", "install-mod.sh", "install-mod-container.sh", "install-agy.sh", "uninstall.sh", "pack.sh"]) {
     execFileSync("/bin/sh", ["-n", path.join(ROOT, "scripts", script)]);
   }
 });

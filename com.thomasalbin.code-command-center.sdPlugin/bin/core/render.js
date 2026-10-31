@@ -97,6 +97,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
 /**
  * @typedef {object} QuotaKeyView
  * @property {string} title which limit, such as `5h`
+ * @property {string} [tag] whose limit, in the top right corner, such as `Gemini`
  * @property {number} [percent] how much is used; nothing while there is no reading
  * @property {string} footer time until the reset, or why there is none
  * @property {number} [even] the percent that even use would have reached by now, drawn as a tick on the bar
@@ -108,7 +109,7 @@ export function renderPinnedEmptyKey(label, app, logos = LOGOS) {
  * @param {QuotaKeyView} view
  * @returns {string} SVG
  */
-export function renderQuotaKey({ title, percent, footer, even, warn = false }) {
+export function renderQuotaKey({ title, tag = "", percent, footer, even, warn = false }) {
   const used = percent === undefined ? 0 : Math.min(100, Math.max(0, percent));
   const tone = used >= 90 ? PALETTE.error.bg : used >= 70 ? PALETTE.waiting.bg : PALETTE.done.bg;
   const value = percent === undefined ? "–" : `${Math.round(used)}%`;
@@ -116,6 +117,7 @@ export function renderQuotaKey({ title, percent, footer, even, warn = false }) {
   return frame(
     QUOTA.bg,
     text(14, 32, 24, QUOTA.title, "start", title) +
+      (tag === "" ? "" : text(KEY_SIZE - 14, 30, textWidth(tag, 18) > 76 ? 15 : 18, QUOTA.title, "end", tag)) +
       text(CENTRE, 84, 44, QUOTA.value, "middle", value) +
       `<rect x="12" y="96" width="120" height="10" rx="5" fill="${QUOTA.track}"/>` +
       (used > 0 ? `<rect x="12" y="96" width="${Math.max(10, Math.round(used * 1.2))}" height="10" rx="5" fill="${tone}"/>` : "") +

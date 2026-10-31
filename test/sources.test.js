@@ -323,32 +323,52 @@ function monitorOf(listed) {
   return { monitor, state };
 }
 
-test("both sources are presented as one list", async () => {
+test("all sources are presented as one list", async () => {
   const mac = monitorOf([{ pid: 1, startedAt: 1, status: "idle" }]);
   const containers = monitorOf([{ pid: 1, startedAt: 1, status: "busy", container: { id: "a1b2c3d4e5f6", localFolder: "/x" } }]);
-  const set = new MonitorSet(mac.monitor, containers.monitor);
+  const antigravity = monitorOf([{ pid: 2, status: "waiting", host: "com.apple.Terminal" }]);
+  const set = new MonitorSet(mac.monitor, containers.monitor, antigravity.monitor);
   let changes = 0;
   set.onChange(() => {
     changes += 1;
   });
   await mac.monitor.refreshNow();
   await containers.monitor.refreshNow();
-  assert.equal(set.sessions.length, 2);
-  assert.equal(changes, 2);
+  await antigravity.monitor.refreshNow();
+  assert.equal(set.sessions.length, 3);
+  assert.equal(changes, 3);
   assert.equal(set.healthy, true);
 });
 
-test("containers are only asked while a VS Code key is visible", () => {
+test("each source is only asked while a key that can show its sessions is visible", () => {
   const mac = monitorOf([]);
   const containers = monitorOf([]);
-  const set = new MonitorSet(mac.monitor, containers.monitor);
+  const antigravity = monitorOf([]);
+  const set = new MonitorSet(mac.monitor, containers.monitor, antigravity.monitor);
+  const running = () => [mac.state.running, containers.state.running, antigravity.state.running];
 
-  set.watch({ desktop: 1, vscode: 0 });
-  assert.deepEqual([mac.state.running, containers.state.running], [true, false]);
-  set.watch({ desktop: 0, vscode: 1 });
-  assert.deepEqual([mac.state.running, containers.state.running], [true, true], "VS Code can also run sessions on the Mac");
-  set.watch({ desktop: 0, vscode: 0 });
-  assert.deepEqual([mac.state.running, containers.state.running], [false, false]);
+  set.watch({ desktop: 1, vscode: 0, antigravity: 0 });
+  assert.deepEqual(running(), [true, false, false]);
+  set.watch({ desktop: 0, vscode: 1, antigravity: 0 });
+  assert.deepEqual(running(), [true, true, false], "VS Code can also run sessions on the Mac");
+  set.watch({ desktop: 0, vscode: 0, antigravity: 1 });
+  assert.deepEqual(running(), [false, false, true], "the Antigravity CLI's keys need no Claude Code");
+  set.watch({ desktop: 0, vscode: 0, antigravity: 0 });
+  assert.deepEqual(running(), [false, false, false]);
+});
+
+test("only Claude Code on this Mac decides whether sessions can be listed", async () => {
+  const failing = new SessionMonitor({
+    listSessions: async () => null,
+    readProcessTable: async () => new Map(),
+    isAlive: () => true,
+    watch: () => ({ close() {} }),
+    now: () => NOW,
+  });
+  for (let round = 0; round < 3; round++) await failing.refreshNow();
+  assert.equal(failing.healthy, false);
+  assert.equal(new MonitorSet(failing, monitorOf([]).monitor, monitorOf([]).monitor).healthy, false);
+  assert.equal(new MonitorSet(monitorOf([]).monitor, monitorOf([]).monitor, failing).healthy, true, "the Antigravity CLI does not count");
 });
 
 // --- plan usage ---

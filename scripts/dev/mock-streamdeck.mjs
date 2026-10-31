@@ -54,10 +54,14 @@ const bundledNode = (existsSync(runtimes) ? readdirSync(runtimes) : [])
   .findLast((file) => existsSync(file));
 const node = bundledNode ?? process.execPath;
 
-// The layout the README suggests, sent in reverse to show order does not matter.
+// The layout the README suggests, with an Antigravity CLI session key and its
+// weekly quota key, set to Gemini 4 Argon, in the free places of the first
+// row. Sent in reverse to show order does not matter.
 const keys = [
   { context: "quota-5h", action: `${PLUGIN}.quota-5h`, row: 0, column: 0 },
   { context: "quota-7d", action: `${PLUGIN}.quota-7d`, row: 0, column: 1 },
+  { context: "agy-0", action: `${PLUGIN}.session-antigravity`, row: 0, column: 2 },
+  { context: "agy-7d", action: `${PLUGIN}.antigravity-quota-7d`, row: 0, column: 3, settings: { group: "gemini-argon-wtu" } },
   ...[0, 1, 2].flatMap((column) => [
     { context: `desktop-${column}`, action: `${PLUGIN}.session-desktop`, row: 1, column },
     { context: `vscode-${column}`, action: `${PLUGIN}.session-vscode`, row: 2, column },
@@ -106,7 +110,7 @@ const stamp = () => `+${String(Date.now() - started).padStart(5)} ms `;
 /**
  * @param {import("ws").WebSocket} socket
  * @param {string} event
- * @param {{ context: string, action: string, row: number, column: number }} key
+ * @param {{ context: string, action: string, row: number, column: number, settings?: object }} key
  * @param {object} [payload]
  */
 function sendKeyEvent(socket, event, key, payload = {}) {
@@ -116,7 +120,7 @@ function sendKeyEvent(socket, event, key, payload = {}) {
       action: key.action,
       context: key.context,
       device: DEVICE,
-      payload: { controller: "Keypad", coordinates: { column: key.column, row: key.row }, isInMultiAction: false, settings: {}, ...payload },
+      payload: { controller: "Keypad", coordinates: { column: key.column, row: key.row }, isInMultiAction: false, settings: key.settings ?? {}, ...payload },
     }),
   );
 }
@@ -210,7 +214,7 @@ function describe(svg) {
   const tick = /<path d="M(\d+) 91V111"/.exec(svg)?.[1];
   const pace = tick === undefined ? "" : ` [even use at ${Math.round((Number(tick) - 12) / 1.2)}%]`;
   const framed = svg.includes('<rect x="3" y="3"') ? " [framed]" : "";
-  const logo = svg.includes('fill-rule="evenodd"') ? " [logo read from VS Code]" : /fill-rule="nonzero" d="M 5 3 H|fill-rule="nonzero" d="M 8 5\.5/.test(svg) ? " [own mark]" : svg.includes('fill-rule="nonzero"') ? " [logo read from the Claude Code extension]" : "";
+  const logo = svg.includes('fill-rule="evenodd"') ? " [logo read from VS Code]" : /fill-rule="nonzero" d="M (5 3 H|8 5\.5|3\.2 6\.1)/.test(svg) ? " [own mark]" : svg.includes('fill-rule="nonzero"') ? " [logo read from the Claude Code extension]" : "";
   return `${(STATES[colour] ?? colour).padEnd(8)} ${JSON.stringify(texts.join(" "))}${pinned}${pace}${framed}${logo}`;
 }
 
