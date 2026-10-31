@@ -23,18 +23,18 @@ const logoKey = readFileSync(
 
 const rows = [
   [
-    renderQuotaKey({ title: "5h", percent: 42, footer: "2h 13m" }),
-    renderQuotaKey({ title: "7d", percent: 78, footer: "3d 4h" }),
-    renderQuotaKey({ title: "5h", percent: 96, footer: "12m" }),
-    renderQuotaKey({ title: "7d", percent: 0, footer: "reset" }),
-    renderQuotaKey({ title: "5h", footer: "no data" }),
+    renderQuotaKey({ title: "5h", tag: "Claude", percent: 42, footer: "2h 13m" }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 78, footer: "3d 4h" }),
+    renderQuotaKey({ title: "5h", tag: "Claude", percent: 96, footer: "12m" }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 0, footer: "reset" }),
+    renderQuotaKey({ title: "5h", tag: "Claude", footer: "no data" }),
   ],
   [
-    renderQuotaKey({ title: "5h", percent: 46, footer: "full 12:40", even: 30, warn: true }),
-    renderQuotaKey({ title: "7d", percent: 13, footer: "2d 16h", even: 62 }),
-    renderQuotaKey({ title: "7d", percent: 72, footer: "full Wed 18:00", even: 60, warn: true }),
-    renderQuotaKey({ title: "5h", percent: 42, footer: "as of 09:08", even: 70 }),
-    renderQuotaKey({ title: "5h", percent: 96, footer: "12m", even: 96 }),
+    renderQuotaKey({ title: "5h", tag: "Claude", percent: 46, footer: "full 12:40", even: 30, warn: true }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 13, footer: "2d 16h", even: 62 }),
+    renderQuotaKey({ title: "7d", tag: "Claude", percent: 72, footer: "full Wed 18:00", even: 60, warn: true }),
+    renderQuotaKey({ title: "5h", tag: "Claude", percent: 42, footer: "as of 09:08", even: 70 }),
+    renderQuotaKey({ title: "5h", tag: "Claude", percent: 96, footer: "12m", even: 96 }),
   ],
   [
     renderSessionKey({ app: "desktop", state: "working", label: "atlas", time: "12m" }),

@@ -50,7 +50,7 @@ Each key is labelled with the session's project folder and carries a mark for it
 
 ### Quota keys
 
-A quota key shows the percent of the limit used, a bar that turns orange from 70% and red from 90%, and the time until the limit resets.
+A quota key shows the percent of the limit used, a bar that turns orange from 70% and red from 90%, and the time until the limit resets. Its top right corner says whose limit it is: `Claude` on the keys for your Claude plan.
 
 - **Pace:** a white tick on the bar marks where even use would be at this moment. A bar that ends left of the tick is under pace.
 - **Run-out warning:** when the limit would run out before it resets, the footer turns orange and names the time instead of counting down: `full 12:40`, or `full Sat 18:00` when that is not today. The pace behind it is the use of the last hour for the 5-hour limit and of the last day for the weekly one, and it falls once you stop.

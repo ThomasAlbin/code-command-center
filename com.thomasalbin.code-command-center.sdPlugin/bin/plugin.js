@@ -121,8 +121,8 @@ process.on("unhandledRejection", () => logger.error("An operation failed unexpec
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-desktop`, "desktop", board));
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-vscode`, "vscode", board));
 streamDeck.actions.registerAction(new SessionAction(`${PLUGIN}.session-antigravity`, "antigravity", board));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage));
-streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-5h`, "five_hour", "5h", usage, { tag: "Claude" }));
+streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.quota-7d`, "seven_day", "7d", usage, { tag: "Claude" }));
 streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-5h`, "five_hour", "5h", antigravityUsage, { grouped: true }));
 streamDeck.actions.registerAction(new QuotaAction(`${PLUGIN}.antigravity-quota-7d`, "seven_day", "7d", antigravityUsage, { grouped: true }));
 // The logo key has the Stream Deck app open the project's page; the plugin itself opens nothing.

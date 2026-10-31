@@ -452,10 +452,18 @@ test("the limit a key shows is its own group's, with its pace", () => {
   assert.ok(pace.even > 0 && pace.even < 100);
 });
 
-test("a quota key names its group in the corner", () => {
+test("a quota key names its group, or Claude, in the corner", () => {
   const svg = renderQuotaKey({ title: "7d", tag: "Argon", percent: 13, footer: "4d 1h" });
   assert.ok(svg.includes(">7d<") && svg.includes(">Argon<") && svg.includes(">13%<"));
-  assert.ok(!renderQuotaKey({ title: "7d", percent: 13, footer: "4d 1h" }).includes("Argon"), "Claude Code's keys have none");
+  assert.ok(renderQuotaKey({ title: "7d", tag: "Claude", percent: 13, footer: "4d 1h" }).includes(">Claude<"));
+  assert.ok(!renderQuotaKey({ title: "7d", percent: 13, footer: "4d 1h" }).includes("Argon"), "without a tag, nothing");
+});
+
+test("the plugin labels Claude Code's quota keys Claude", () => {
+  const source = readFileSync(new URL("../com.thomasalbin.code-command-center.sdPlugin/bin/plugin.js", import.meta.url), "utf8");
+  const claudeKeys = [...source.matchAll(/new QuotaAction\(`\$\{PLUGIN\}\.quota-(?:5h|7d)`[^\n]*/g)].map((match) => match[0]);
+  assert.equal(claudeKeys.length, 2);
+  assert.ok(claudeKeys.every((line) => line.includes('{ tag: "Claude" }')));
 });
 
 test("the limits are read from their one file, as of when it was written", async () => {

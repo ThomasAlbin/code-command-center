@@ -25,6 +25,7 @@ export class QuotaAction extends SingletonAction {
   #title;
   #usage;
   #grouped;
+  #tag;
   /** @type {Map<string, QuotaKey>} */
   #keys = new Map();
 
@@ -33,15 +34,17 @@ export class QuotaAction extends SingletonAction {
    * @param {string} window the limit's window as Claude Code names it, such as `five_hour`
    * @param {string} title what the key calls it, such as `5h`
    * @param {UsageMonitor} usage
-   * @param {{ grouped?: boolean }} [options] `grouped` for the Antigravity CLI's limits, one per group of models
+   * @param {{ grouped?: boolean, tag?: string }} [options] `grouped` for the Antigravity CLI's limits, one per
+   *   group of models, each named in the key's corner; `tag` names whose limit a key without groups shows there
    */
-  constructor(uuid, window, title, usage, { grouped = false } = {}) {
+  constructor(uuid, window, title, usage, { grouped = false, tag } = {}) {
     super();
     this.manifestId = uuid;
     this.#window = window;
     this.#title = title;
     this.#usage = usage;
     this.#grouped = grouped;
+    this.#tag = tag;
     usage.onChange(() => this.#draw());
   }
 
@@ -116,7 +119,8 @@ export class QuotaAction extends SingletonAction {
     for (const key of this.#keys.values()) {
       const kind = key.group === undefined ? this.#window : `${this.#window}:${key.group}`;
       const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind));
-      const svg = renderQuotaKey(key.group === undefined ? view : { ...view, tag: groupLabel(key.group) });
+      const tag = key.group === undefined ? this.#tag : groupLabel(key.group);
+      const svg = renderQuotaKey(tag === undefined ? view : { ...view, tag });
       if (key.image === svg) continue;
       key.image = svg;
       key.setImage(svgToDataUri(svg)).catch(() => {
