@@ -122,20 +122,10 @@ test("a waiting key shimmers in warm colours, so its orange does not turn grey",
   const done = [...renderSessionKey({ app: "desktop", state: "done", label: "alpha", holo: 0.2 }).matchAll(/stop-color="(#[0-9A-F]{6})" stop-opacity="0.45"/g)].map((match) => match[1]);
   assert.ok(done.includes("#C6FF5C") && !done.includes("#B44DFF"), "a finished key in light colours, no violet");
   const idle = renderSessionKey({ app: "desktop", state: "idle", label: "alpha", holo: 0.2 });
-  const stops = [.../<linearGradient id="sheen".*?<\/linearGradient>/.exec(idle)?.[0].matchAll(/offset="([\d.]+)" stop-color="(#[0-9A-F]{6})" stop-opacity="([\d.]+)"/g) ?? []]
-    .map(([, offset, colour, opacity]) => ({ offset: Number(offset), colour, opacity: Number(opacity) }));
-  assert.ok(stops.some(({ colour }) => colour === "#00FFA3"), "an idle key shimmers in green");
-  const gaps = stops.map((stop, index) => (stop.opacity === 0 ? index : -1)).filter((index) => index >= 0);
-  assert.equal(gaps.length, 8, "in ribbons with dark gaps between them, so it does not look grey");
-  for (const index of gaps) {
-    const width = stops[index + 1].offset - stops[index - 1].offset;
-    assert.ok(width <= 0.4 / 20, `the gap at ${stops[index].offset} is thin`);
-    assert.ok(stops[index - 1].opacity > 0 && stops[index + 1].opacity > 0, "and bright right up to it");
-  }
-  const working = renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: 0.2 });
-  const line = (/** @type {string} */ svg) => /<linearGradient id="sheen"[^>]*>/.exec(svg)?.[0];
-  assert.equal(line(idle), line(working), "the same drift as every other key, so all stay in step");
-  assert.ok(idle.includes('stop-color="#B0FFD9" stop-opacity="0.35"'), "and a mint glint, as a white one turns grey");
+  const idleBands = [.../<linearGradient id="sheen".*?<\/linearGradient>/.exec(idle)?.[0].matchAll(/stop-color="(#[0-9A-F]{6})"/g) ?? []].map((match) => match[1]);
+  assert.ok(idle.includes('fill="#2EA043"') && idle.includes('fill="#FFFFFF"'), "an idle key takes a finished key's green, since a shimmer on its own dark green looks grey");
+  assert.ok(idleBands.includes("#0E6B30") && !idleBands.includes("#C6FF5C"), "with dark green bands where that has lime, to tell the two apart");
+  assert.ok(renderSessionKey({ app: "desktop", state: "idle", label: "alpha" }).includes('fill="#12361F"'), "without the shimmer it stays dim");
   const pulsing = renderSessionKey({ app: "desktop", state: "waiting", label: "alpha", urgent: true, lit: true, holo: 0.2 });
   assert.ok(pulsing.indexOf("url(#sheen)") < pulsing.lastIndexOf("<rect"), "the pulse's frame stays on top");
 });

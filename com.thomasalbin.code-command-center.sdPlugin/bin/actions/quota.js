@@ -1,8 +1,8 @@
 // @ts-check
 import streamDeck, { SingletonAction } from "@elgato/streamdeck";
 import { groupLabel, groupOf, groupsIn } from "../core/antigravity.js";
+import { genZOf, shimmerPhase } from "../core/gen-z.js";
 import { renderQuotaKey, svgToDataUri } from "../core/render.js";
-import { genZOf } from "../core/settings.js";
 import { describeLimit } from "../core/usage.js";
 
 /** @typedef {import("../app/usage-monitor.js").UsageMonitor} UsageMonitor */
@@ -11,8 +11,6 @@ import { describeLimit } from "../core/usage.js";
 const RESET_SHOWN_MS = 3000;
 /** In Gen-Z mode: one sway of the grass on a key whose limit is full. */
 const GRASS_MS = 2_400;
-/** In Gen-Z mode: one cycle of the highlight that runs along a bar. */
-const SHINE_MS = 3_000;
 /** How often a key is redrawn while it moves. */
 const FRAME_MS = 100;
 
@@ -21,6 +19,7 @@ const FRAME_MS = 100;
  * @property {(image?: string) => Promise<void>} setImage
  * @property {string} [image] what the key shows now
  * @property {string} [group] the group of models whose limit it shows; only for the Antigravity CLI
+ * @property {{ column: number, row: number }} [coordinates] where it sits, so its highlight keeps step with the shimmer
  * @property {ReturnType<typeof setTimeout>} [reset] set while the key shows when its limit resets
  */
 
@@ -71,7 +70,11 @@ export class QuotaAction extends SingletonAction {
   onWillAppear(ev) {
     const { action } = ev;
     if (!action.isKey() || this.#keys.has(action.id)) return;
-    this.#keys.set(action.id, { setImage: (image) => action.setImage(image), group: this.#groupOf(ev.payload.settings) });
+    this.#keys.set(action.id, {
+      setImage: (image) => action.setImage(image),
+      group: this.#groupOf(ev.payload.settings),
+      coordinates: action.coordinates,
+    });
     this.#usage.acquire();
     this.#draw();
   }
@@ -161,12 +164,12 @@ export class QuotaAction extends SingletonAction {
   #draw() {
     const now = Date.now();
     const grass = this.#genZ ? (now % GRASS_MS) / GRASS_MS : undefined;
-    const shine = this.#genZ ? (now % SHINE_MS) / SHINE_MS : undefined;
     let moving = false;
     for (const key of this.#keys.values()) {
       const kind = key.group === undefined ? this.#window : `${this.#window}:${key.group}`;
       const view = describeLimit(this.#title, this.#usage.view(kind), this.#usage.pace(kind), { reset: key.reset !== undefined, grass });
-      // An empty bar has nothing to shine along.
+      // An empty bar has nothing to shine along. The highlight runs as the shimmer's glint passes this key.
+      const shine = this.#genZ ? shimmerPhase(now, key.coordinates) : undefined;
       const shining = shine !== undefined && view.grass === undefined && (view.percent ?? 0) > 0;
       if (view.grass !== undefined || shining) moving = true;
       const tag = key.group === undefined ? this.#tag : groupLabel(key.group);

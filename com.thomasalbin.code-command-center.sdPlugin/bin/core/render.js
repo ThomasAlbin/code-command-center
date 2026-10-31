@@ -9,10 +9,10 @@ import { LOGOS } from "./logos.js";
 /** @typedef {import("./state.js").DisplayState} DisplayState */
 /**
  * @typedef {object} SheenLook
- * @property {ReadonlyArray<string | null>} colours of the bands, in the order they drift past; `null` leaves a thin gap
+ * @property {ReadonlyArray<string>} colours of the bands, in the order they drift past
  * @property {number} opacity of the bands
- * @property {string} [glintColour] white unless given
  * @property {number} glintOpacity
+ * @property {{ bg: string, fg: string }} [key] the key's colours beneath the shimmer, where they are not those of its state
  */
 
 const FONT = "Helvetica, Arial, sans-serif";
@@ -57,21 +57,19 @@ const SHEEN = {
   glint: 26,
   /** The part of the cycle the glint takes to cross the key. For the rest of it, there is none. */
   glintShare: 0.55,
-  /** How far a gap between bands reaches to either side, as a share of the distance between two bands. */
-  gap: 0.15,
   /**
    * How the shimmer looks on each kind of key. Cool colours on a working key's
    * blue; warm ones on a waiting key's orange and light ones on a finished
-   * key's green, where cool ones turn grey or brown. An idle key is dark: a wash
-   * of colour over it looks grey, so it has green ribbons with thin dark gaps
-   * between them, and a mint glint, since a white one turns grey there too.
+   * key's green, where cool ones turn grey or brown. An idle key's own dark
+   * green turns any shimmer grey or olive, so it takes a finished key's green
+   * and shimmer, with dark green bands where that has lime, to tell the two apart.
    * @type {{ working: SheenLook } & Partial<Record<DisplayState, SheenLook>>}
    */
   looks: {
     working: { colours: ["#00E5FF", "#B44DFF", "#FF5CC8", "#7DF9FF", "#6BFFB8"], opacity: 0.38, glintOpacity: 0.65 },
     waiting: { colours: ["#FFE45C", "#FF5CC8", "#FFFFFF", "#FFB0E0", "#FFF3A0"], opacity: 0.38, glintOpacity: 0.65 },
     done: { colours: ["#FFE45C", "#C6FF5C", "#7DF9FF", "#FFF3A0", "#6BFFB8"], opacity: 0.45, glintOpacity: 0.65 },
-    idle: { colours: ["#00FFA3", null, "#00D1FF", null, "#7CFF4F"], opacity: 0.45, glintColour: "#B0FFD9", glintOpacity: 0.35 },
+    idle: { colours: ["#FFE45C", "#0E6B30", "#7DF9FF", "#FFF3A0", "#6BFFB8"], opacity: 0.45, glintOpacity: 0.65, key: PALETTE.done },
   },
 };
 /**
@@ -92,13 +90,11 @@ const BURST = {
   /** The part of the burst the pop takes. */
   popShare: 0.4,
 };
-/** A highlight that runs along the filled part of a quota key's bar. */
+/** A highlight that runs along the filled part of a quota key's bar, as the shimmer's glint crosses the key. */
 const SHINE = {
   /** Half its width. */
   width: 14,
   opacity: 0.75,
-  /** The part of its cycle it takes to run along the bar. For the rest of it, there is none. */
-  share: 0.4,
 };
 /** The grass along the bottom of a quota key whose limit is full, swaying. */
 const GRASS = {
@@ -137,7 +133,8 @@ export function renderSessionKey(
   { app, state, label, overflow = 0, pinned = false, time = "", reason = "", urgent = false, lit = false, holo, burst },
   logos = LOGOS,
 ) {
-  const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : PALETTE[state];
+  const look = holo === undefined ? undefined : (SHEEN.looks[state] ?? SHEEN.looks.working);
+  const { bg, fg } = lit && state === "waiting" ? WAITING_LIT : (look?.key ?? PALETTE[state]);
   const fitted = fitLabel(label);
   // The reason takes the last line, in lighter type, so the label moves up, and one of two lines shrinks.
   const name =
@@ -147,7 +144,7 @@ export function renderSessionKey(
   const pop = burst === undefined ? 1 : 1 + BURST.pop * Math.sin(Math.PI * Math.min(1, burst / BURST.popShare));
   return frame(
     bg,
-    (holo === undefined ? "" : sheen(holo, SHEEN.looks[state] ?? SHEEN.looks.working)) +
+    (holo === undefined || look === undefined ? "" : sheen(holo, look)) +
       (burst === undefined ? "" : spreadingRing(burst)) +
       // Without a listing there is no session to show, whichever app the key is for.
       (state === "unknown" ? text(CENTRE, 58, 48, fg, "middle", "?") : logo(logos[app], LOGO.cx, LOGO.cy, LOGO.size * pop, fg)) +
@@ -249,7 +246,7 @@ export function svgToDataUri(svg) {
  * @param {SheenLook} look the bands' colours, in the order they drift past, and how strongly they and the glint show
  * @returns {string} SVG, to lie over the key's colour
  */
-function sheen(phase, { colours, opacity, glintColour = "#FFFFFF", glintOpacity }) {
+function sheen(phase, { colours, opacity, glintOpacity }) {
   const { period, glint } = SHEEN;
   const angle = (SHEEN.angle * Math.PI) / 180;
   const [dx, dy] = [Math.cos(angle), Math.sin(angle)];
@@ -265,25 +262,10 @@ function sheen(phase, { colours, opacity, glintColour = "#FFFFFF", glintOpacity 
   // Four periods cover the key wherever the bands are; one later the pattern is the same again.
   const start = (phase - 1) * period;
   const count = 4 * colours.length;
-  /**
-   * @param {number} offset
-   * @param {string} colour
-   * @param {number} shown opacity
-   */
-  const stop = (offset, colour, shown) => `<stop offset="${round(Math.min(1, Math.max(0, offset)), 4)}" stop-color="${colour}" stop-opacity="${shown}"/>`;
-  let stops = "";
-  for (let index = 0; index <= count; index++) {
-    const colour = colours[index % colours.length];
-    if (colour !== null) {
-      stops += stop(index / count, colour, opacity);
-      continue;
-    }
-    // A gap is a thin dip to nothing where the bands on either side meet, so they blend as they would without it.
-    const before = colours[(index - 1 + colours.length) % colours.length] ?? "#FFFFFF";
-    const meet = mix(before, colours[(index + 1) % colours.length] ?? before);
-    const reach = SHEEN.gap / count;
-    stops += stop(index / count - reach, meet, opacity) + stop(index / count, meet, 0) + stop(index / count + reach, meet, opacity);
-  }
+  const stops = Array.from(
+    { length: count + 1 },
+    (_, index) => `<stop offset="${round(index / count, 4)}" stop-color="${colours[index % colours.length]}" stop-opacity="${opacity}"/>`,
+  ).join("");
   let defs = `<linearGradient id="sheen" gradientUnits="userSpaceOnUse" ${along(start, start + 4 * period)}>${stops}</linearGradient>`;
   let body = `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#sheen)"/>`;
 
@@ -292,9 +274,9 @@ function sheen(phase, { colours, opacity, glintColour = "#FFFFFF", glintOpacity 
     const centre = -glint + crossed * (reach + 2 * glint);
     defs +=
       `<linearGradient id="glint" gradientUnits="userSpaceOnUse" ${along(centre - glint, centre + glint)}>` +
-      `<stop offset="0" stop-color="${glintColour}" stop-opacity="0"/>` +
-      `<stop offset="0.5" stop-color="${glintColour}" stop-opacity="${glintOpacity}"/>` +
-      `<stop offset="1" stop-color="${glintColour}" stop-opacity="0"/></linearGradient>`;
+      `<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>` +
+      `<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="${glintOpacity}"/>` +
+      `<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>`;
     body += `<rect width="${KEY_SIZE}" height="${KEY_SIZE}" fill="url(#glint)"/>`;
   }
   return `<defs>${defs}</defs>${body}`;
@@ -310,7 +292,7 @@ function sheen(phase, { colours, opacity, glintColour = "#FFFFFF", glintOpacity 
  * @returns {string} SVG; nothing while it rests
  */
 function barShine(filled, phase) {
-  const run = phase / SHINE.share;
+  const run = phase / SHEEN.glintShare;
   if (run > 1) return "";
   const { width } = SHINE;
   const centre = 12 - width + run * (filled + 2 * width);
@@ -387,19 +369,6 @@ function confetti(progress) {
  */
 function easeOut(progress) {
   return 1 - (1 - progress) ** 3;
-}
-
-/**
- * @param {string} a colour as `#RRGGBB`
- * @param {string} b
- * @returns {string} the colour halfway between them
- */
-function mix(a, b) {
-  const channel = (/** @type {number} */ at) =>
-    Math.round((parseInt(a.slice(at, at + 2), 16) + parseInt(b.slice(at, at + 2), 16)) / 2)
-      .toString(16)
-      .padStart(2, "0");
-  return `#${channel(1)}${channel(3)}${channel(5)}`.toUpperCase();
 }
 
 /**

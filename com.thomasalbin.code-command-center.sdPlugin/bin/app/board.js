@@ -1,10 +1,10 @@
 // @ts-check
 import { focusTarget } from "../core/focus.js";
 import { folderLabel, formatElapsed, reasonWord } from "../core/format.js";
+import { genZOf, shimmerPhase } from "../core/gen-z.js";
 import { projectOf } from "../core/parse-agents.js";
 import { listProjects, nextPin, pinOf } from "../core/pins.js";
 import { renderEmptyKey, renderPinnedEmptyKey, renderSessionKey, svgToDataUri } from "../core/render.js";
-import { genZOf } from "../core/settings.js";
 import { assignSlots } from "../core/slots.js";
 import { displayState, elapsed, overdue, priority } from "../core/state.js";
 
@@ -64,12 +64,11 @@ const REDRAW_MS = 60_000;
 const CLOCK_MS = 5_000;
 /** How long each half of the pulse of a key that has waited too long lasts. */
 const PULSE_MS = 1_000;
-/** In Gen-Z mode: one cycle of the holographic shimmer of a key whose session is working, waiting, finished or idle. */
-const HOLO_MS = 4_000;
-/** @type {ReadonlySet<DisplayState>} */
+/**
+ * In Gen-Z mode: the keys that shimmer.
+ * @type {ReadonlySet<DisplayState>}
+ */
 const SHIMMERING = new Set(["working", "waiting", "done", "idle"]);
-/** How much later the shimmer reaches the next key along, so it travels across the deck. */
-const HOLO_STAGGER_MS = 300;
 /** In Gen-Z mode: how long a key bursts into confetti when its session finishes. */
 const BURST_MS = 1_600;
 /** How often a key is redrawn while it moves. */
@@ -319,7 +318,7 @@ function image(placed, healthy, shown, overflow, now, genZ, logos) {
         reason: shown.state === "waiting" ? reasonWord(info.waitingFor) : "",
         urgent,
         lit: urgent && Math.floor(now / PULSE_MS) % 2 === 1,
-        holo: genZ && SHIMMERING.has(shown.state) ? holoPhase(now, placed.key.coordinates) : undefined,
+        holo: genZ && SHIMMERING.has(shown.state) ? shimmerPhase(now, placed.key.coordinates) : undefined,
         burst: genZ ? burstOf(shown, now) : undefined,
       },
       logos,
@@ -328,19 +327,6 @@ function image(placed, healthy, shown, overflow, now, genZ, logos) {
   if (!healthy) return renderSessionKey({ app, state: "unknown", label: "", pinned }, logos);
   if (placed.pin !== undefined) return renderPinnedEmptyKey(folderLabel(placed.pin), app, logos);
   return renderEmptyKey(CAPTIONS[app], app, logos);
-}
-
-/**
- * Where the shimmer of a key is in its cycle. It starts in the top left
- * corner of the deck and reaches each key a little later than the one before.
- *
- * @param {number} now
- * @param {{ column: number, row: number } | undefined} coordinates
- * @returns {number} from 0 to 1
- */
-function holoPhase(now, coordinates) {
-  const delay = coordinates === undefined ? 0 : (coordinates.column + coordinates.row) * HOLO_STAGGER_MS;
-  return (((now - delay) % HOLO_MS) + HOLO_MS) % HOLO_MS / HOLO_MS;
 }
 
 /**

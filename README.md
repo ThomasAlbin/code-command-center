@@ -75,11 +75,11 @@ Tick **Gen-Z mode** under **Effects** in the settings of any session key in the 
 | Working (blue) | Shimmers like holographic foil: cool bands of colour drift across it, and every four seconds a glint sweeps over it |
 | Waiting (orange) | Shimmers the same way, in warm colours |
 | Finished (bright green) | Bursts as it turns green: for 1.6 seconds the logo pops, a ring spreads from it and confetti flies out. Then it shimmers in light colours, gold, lime and aqua |
-| Idle (dim green) | Shimmers in ribbons of green, aqua and lime with thin dark gaps between them, and a mint glint |
-| Quota | A highlight runs along the bar every three seconds |
+| Idle (dim green) | Takes a finished key's bright green and shimmer, with dark green bands where that has lime, so the two stay apart |
+| Quota | A highlight runs along the bar as the glint passes the key, in step with the session keys |
 | Quota, limit full | Says `touch grass` in place of the percent and the bar, with how long until the limit resets, such as `for 2h 13m`, and grass sways along its bottom |
 
-The glint reaches each session key a little after the one to its upper left, so it travels across the deck. Each kind of key has colours that suit it: on the dark idle key, for one, a wash of colour or a white glint would only look grey. The shimmer lies beneath the logo and the label, and only the confetti flies over them. A finished key bursts only when its session is seen to finish, not when a page with a key that is already green comes into view. A press works as always; on a full quota key it still shows the time the limit resets.
+The glint reaches each key, session and quota keys alike, a little after the one to its upper left, so it travels across the deck as one wave. Each kind of key has colours that suit it. An idle key's own dark green would turn any shimmer grey, which is why it borrows a finished key's green. The shimmer lies beneath the logo and the label, and only the confetti flies over them. A finished key bursts only when its session is seen to finish, not when a page with a key that is already green comes into view. A press works as always; on a full quota key it still shows the time the limit resets.
 
 While a key moves, the plugin redraws it ten times a second. With Gen-Z mode off, keys are redrawn as before.
 
