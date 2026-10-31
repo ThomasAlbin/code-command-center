@@ -220,14 +220,15 @@ test("a key that says to touch grass has grass that sways, and no bar", () => {
   assert.ok(!svg.includes("NaN") && !svg.includes("undefined"));
 });
 
-test("in Gen-Z mode a highlight runs along the bar, within its filled part", () => {
+test("in Gen-Z mode the glint lights up the bar as it passes, within its filled part", () => {
   const at = (/** @type {number | undefined} */ shine, percent = 50) => renderQuotaKey({ title: "5h", percent, footer: "2h", shine });
   assert.ok(!at(undefined).includes("url(#shine)"));
   const running = at(0.2);
   assert.ok(running.includes("url(#shine)"));
   assert.ok(/<rect x="12" y="96" width="60" height="10" rx="5" fill="url\(#shine\)"\/>/.test(running), "the shape of the filled part");
   assert.notEqual(at(0.1), at(0.3), "it moves");
-  assert.ok(!at(0.7).includes("url(#shine)"), "then it rests");
+  const corner = { column: 4, row: 2, columns: 5, rows: 3 };
+  assert.ok(!renderQuotaKey({ title: "5h", percent: 50, footer: "2h", shine: 0.05, place: corner }).includes("url(#shine)"), "not while the glint is elsewhere on the deck");
   assert.ok(!at(0.2, 0).includes("url(#shine)"), "an empty bar has nothing to shine along");
 });
 

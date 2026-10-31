@@ -147,17 +147,16 @@ test("the keys of a deck draw one shimmer: the bands run on from key to key, and
   /** @param {string} svg */
   const glinting = (svg) => svg.includes("url(#glint)");
   assert.ok(glinting(key(0, 0, 0.02)) && !glinting(key(4, 2, 0.02)), "the glint starts in the top left corner of the deck");
-  assert.ok(!glinting(key(0, 0, 0.55)) && glinting(key(4, 2, 0.55)), "and ends in the bottom right");
-  assert.ok(!glinting(key(2, 1, 0.8)), "then rests");
+  assert.ok(!glinting(key(0, 0, 0.85)) && glinting(key(4, 2, 0.85)), "and ends in the bottom right");
+  assert.ok(glinting(key(4, 2, 0.99)) && glinting(key(0, 0, 0.01)), "as it leaves, the next one enters");
+  assert.ok(!glinting(key(0, 0, 0.99)), "only one at a time");
 });
 
-test("the glint crosses a shimmering key early in each cycle, and the bands keep drifting", () => {
+test("on a key of its own, the glint crosses it over the whole cycle, and the bands keep drifting", () => {
   /** @param {number} phase */
   const at = (phase) => renderSessionKey({ app: "desktop", state: "working", label: "alpha", holo: phase });
-  assert.ok(at(0).includes("url(#glint)"));
-  assert.ok(at(0.5).includes("url(#glint)"));
-  assert.ok(!at(0.8).includes("url(#glint)"), "then it rests");
-  assert.notEqual(at(0.8), at(0.9), "the bands still move");
+  for (const phase of [0, 0.5, 0.95]) assert.ok(at(phase).includes("url(#glint)"), String(phase));
+  assert.notEqual(at(0.8), at(0.9), "the bands move");
   assert.equal(at(0.3), at(0.3), "the same moment is the same image, so nothing is sent twice");
 });
 

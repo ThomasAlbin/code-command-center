@@ -53,7 +53,7 @@ const QUOTA = { bg: "#0D1117", title: "#8B949E", value: "#FFFFFF", footer: "#C9D
 /**
  * The holographic shimmer of a working, waiting, finished or idle key: bands
  * of colour that drift across it, and a glint that sweeps over it once in each
- * cycle. It lies between the key's colour and what is drawn on it, so the logo
+ * cycle, the next one starting as the last one leaves the deck. It lies between the key's colour and what is drawn on it, so the logo
  * and the label stay sharp.
  *
  * The keys of a deck draw one shimmer between them, as if the deck were one
@@ -67,8 +67,6 @@ const SHEEN = {
   period: 96,
   /** Half the width of the glint. */
   glint: 32,
-  /** The part of the cycle the glint takes to cross the deck. For the rest of it, there is none. */
-  glintShare: 0.6,
   /**
    * How the shimmer looks on each kind of key. Cool colours on a working key's
    * blue; warm ones on a waiting key's orange and light ones on a finished
@@ -283,17 +281,16 @@ function along(from, to) {
 }
 
 /**
- * Where the glint is, as it sweeps across the deck in the first part of each cycle.
+ * Where the glint is. It sweeps across the deck over the whole cycle: as it
+ * leaves the bottom right corner, the next one enters at the top left.
  * @param {number} phase where the shimmer is in its cycle, from 0 to 1
  * @param {DeckPlace} [place]
  * @returns {number | undefined} its centre's distance along the drift from the key's corner; nothing while it is off this key
  */
 function glintOn(phase, place) {
-  const crossed = phase / SHEEN.glintShare;
-  if (crossed > 1) return undefined;
   const { glint } = SHEEN;
   const { start, reach } = onDeck(place);
-  const centre = -glint + crossed * (reach + 2 * glint) - start;
+  const centre = -glint + phase * (reach + 2 * glint) - start;
   return centre < -glint || centre > KEY_SIZE * (DX + DY) + glint ? undefined : centre;
 }
 
