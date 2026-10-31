@@ -1,5 +1,5 @@
 // @ts-check
-import { formatClock, formatCountdown, formatDayClock } from "./format.js";
+import { formatClock, formatCountdown, formatDay, formatDayClock } from "./format.js";
 
 /**
  * One plan limit as Claude Code reports it.
@@ -20,7 +20,7 @@ import { formatClock, formatCountdown, formatDayClock } from "./format.js";
  * What a quota key has to show for one limit.
  * @typedef {{ status: "none" }
  *   | { status: "reset" }
- *   | { status: "ok", percent: number, resetsInMs: number | undefined, writtenAt: number, stale: boolean }} LimitView
+ *   | { status: "ok", percent: number, resetsAt: number | undefined, resetsInMs: number | undefined, writtenAt: number, stale: boolean }} LimitView
  */
 
 /** A reading older than this is shown with the time it was taken. */
@@ -88,6 +88,7 @@ export function viewLimit(readings, kind, now) {
   return {
     status: "ok",
     percent: limit.percentUsed,
+    resetsAt: limit.resetsAt,
     resetsInMs: limit.resetsAt === undefined ? undefined : limit.resetsAt - now,
     writtenAt,
     stale: now - writtenAt > STALE_AFTER_MS,
@@ -98,12 +99,18 @@ export function viewLimit(readings, kind, now) {
  * @param {string} title which limit, such as `5h`
  * @param {LimitView} view
  * @param {import("./pace.js").Pace} [pace] how use compares with time, when that is known
+ * @param {{ reset?: boolean }} [options] `reset` to show when the limit resets instead of how much is used
  * @returns {import("./render.js").QuotaKeyView}
  */
-export function describeLimit(title, view, pace) {
+export function describeLimit(title, view, pace, { reset = false } = {}) {
   if (view.status === "none") return { title, footer: "no data" };
   if (view.status === "reset") return { title, percent: 0, footer: "reset" };
   const shown = pace === undefined ? { title, percent: view.percent } : { title, percent: view.percent, even: pace.even };
+  if (reset && view.resetsAt !== undefined && view.resetsInMs !== undefined) {
+    // A time of day with its day does not fit on one line, so the time takes the middle and the day goes below.
+    const today = view.resetsInMs < SAME_DAY_MS;
+    return { ...shown, value: formatClock(view.resetsAt), footer: today ? "resets" : `resets ${formatDay(view.resetsAt)}` };
+  }
   // An old reading may be out of date, so say when it was taken instead of counting down.
   if (view.stale) return { ...shown, footer: `as of ${formatClock(view.writtenAt)}` };
   if (pace?.fullAt !== undefined) {

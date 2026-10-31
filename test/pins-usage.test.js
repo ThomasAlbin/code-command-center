@@ -134,7 +134,7 @@ test("the newest report of a limit wins, whichever session wrote it", () => {
   const older = reading({ writtenAt: NOW - 20 * MINUTE, limits: [{ kind: "five_hour", percentUsed: 30, resetsAt: NOW + 2 * HOUR }] });
   const newer = reading({ writtenAt: NOW - 5 * MINUTE, limits: [{ kind: "five_hour", percentUsed: 44, resetsAt: NOW + 2 * HOUR }] });
   const view = viewLimit([newer, older], "five_hour", NOW);
-  assert.deepEqual(view, { status: "ok", percent: 44, resetsInMs: 2 * HOUR, writtenAt: NOW - 5 * MINUTE, stale: false });
+  assert.deepEqual(view, { status: "ok", percent: 44, resetsAt: NOW + 2 * HOUR, resetsInMs: 2 * HOUR, writtenAt: NOW - 5 * MINUTE, stale: false });
 });
 
 test("a limit missing from the newest report falls back to the last report that had it", () => {

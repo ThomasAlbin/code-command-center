@@ -37,6 +37,11 @@ const rows = [
     renderQuotaKey({ title: "5h", tag: "Claude", percent: 96, footer: "12m", even: 96 }),
   ],
   [
+    renderQuotaKey({ title: "5h", percent: 42, value: "16:30", footer: "resets" }),
+    renderQuotaKey({ title: "7d", percent: 72, value: "18:00", footer: "resets Wed", even: 60 }),
+    renderQuotaKey({ title: "7d", tag: "Argon", percent: 13, value: "21:36", footer: "resets Mon" }),
+  ],
+  [
     renderSessionKey({ app: "desktop", state: "working", label: "atlas", time: "12m" }),
     renderSessionKey({ app: "vscode", state: "working", label: "big-data-analyzer", pinned: true, time: "1h05" }),
     renderSessionKey({ app: "desktop", state: "waiting", label: "test", time: "3m", reason: "permission" }),

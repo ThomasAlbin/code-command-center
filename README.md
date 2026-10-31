@@ -17,10 +17,10 @@ There are eight kinds of key. Put as many of each on your deck as you like.
 | **Desktop Session** | One Claude Code session of the Claude desktop app | Brings Claude to the front and opens that session |
 | **Session in VS Code** | One Claude Code session in VS Code, also inside a Dev Container | Brings that project's VS Code window to the front |
 | **Session in Antigravity CLI** | One Antigravity CLI session that runs in a terminal | Brings the terminal app it runs in to the front |
-| **Quota 5h** | How much of the 5-hour limit of your Claude plan is used | Nothing, it is a display |
-| **Quota 7d** | The same for the weekly limit | Nothing |
-| **Antigravity Quota 5h** | How much of a 5-hour limit of the Antigravity CLI is used, for one group of models | Nothing |
-| **Antigravity Quota 7d** | The same for a weekly limit | Nothing |
+| **Quota 5h** | How much of the 5-hour limit of your Claude plan is used | Shows the time the limit resets, for 3 seconds |
+| **Quota 7d** | The same for the weekly limit | The same |
+| **Antigravity Quota 5h** | How much of a 5-hour limit of the Antigravity CLI is used, for one group of models | The same |
+| **Antigravity Quota 7d** | The same for a weekly limit | The same |
 | **Project Page** | The logo of Code Command Center | Opens this project's page on GitHub in your browser |
 
 ### Session keys
@@ -57,6 +57,7 @@ A quota key shows the percent of the limit used, a bar that turns orange from 70
 - **Freshness:** a new reading arrives when a Claude Code session that runs the mod finishes a turn, and during a turn each time a limit moves by a whole percent. A reading older than an hour is shown as `as of 14:05`; a younger one does not say how old it is.
 - **Other devices:** the limits belong to your account, so use from claude.ai, your phone or a Dev Container without the mod is counted, but it only shows up with the next reading.
 - **After a reset:** past its reset time a limit reads 0% and `reset` until the next turn opens a new window.
+- **Reset time:** press a quota key to see the time its limit resets. For 3 seconds the time takes the place of the percent, such as `16:30`, and the footer says `resets`, or `resets Sat` when that is not today. When no reset time is known, as with `no data`, the press changes nothing.
 
 The quota keys need the [mod](#2-the-mod-for-the-quota-keys). Without it they show `no data`.
 

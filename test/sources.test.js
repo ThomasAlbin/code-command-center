@@ -515,11 +515,11 @@ test("what a quota key says for each kind of reading", () => {
   assert.deepEqual(describeLimit("5h", { status: "none" }), { title: "5h", footer: "no data" });
   assert.deepEqual(describeLimit("5h", { status: "reset" }), { title: "5h", percent: 0, footer: "reset" });
   assert.deepEqual(
-    describeLimit("7d", { status: "ok", percent: 41.2, resetsInMs: 76 * 3_600_000, writtenAt: NOW, stale: false }),
+    describeLimit("7d", { status: "ok", percent: 41.2, resetsAt: NOW + 76 * 3_600_000, resetsInMs: 76 * 3_600_000, writtenAt: NOW, stale: false }),
     { title: "7d", percent: 41.2, footer: "3d 4h" },
   );
   const old = new Date(2026, 9, 8, 9, 5).getTime();
-  assert.deepEqual(describeLimit("7d", { status: "ok", percent: 41.2, resetsInMs: 3_600_000, writtenAt: old, stale: true }), {
+  assert.deepEqual(describeLimit("7d", { status: "ok", percent: 41.2, resetsAt: NOW + 3_600_000, resetsInMs: 3_600_000, writtenAt: old, stale: true }), {
     title: "7d",
     percent: 41.2,
     footer: "as of 09:05",
